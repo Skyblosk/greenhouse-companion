@@ -19,7 +19,7 @@ import dev.ilyapple.ghc.core.drops.LootTable;
 
 /** Rebuilds the all-time book from the user's real drop logs (read only) under today's rules. */
 class DropRebuildTest {
-	/** Your drop logs, from {@code minecraftDir} in local.properties (build.gradle); skipped without them. */
+	/** Your drop logs, from {@code minecraftDir} in local.properties (build.gradle.kts); skipped without them. */
 	private static final String LOGS_DIR = System.getenv("GHC_DROP_LOGS");
 
 	@Test

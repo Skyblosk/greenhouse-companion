@@ -2,7 +2,7 @@
 
 This is still in testing, there may be bugs with it!
 
-A Fabric client mod for **Hypixel SkyBlock's Garden Greenhouse** (Minecraft 26.1.2). It follows the layouts and flows
+A Fabric client mod for **Hypixel SkyBlock's Garden Greenhouse** (Minecraft 26.1.2, 26.2 and 26.3). It follows the layouts and flows
 you build with [SkyShards' greenhouse tools](https://greenhouse.skyshards.com) in game: it works out which flow plot and
 step each of your greenhouses runs, shows what to place, remove or fix, tracks every plant's stage from how it looks,
 tells you when to swap layouts, highlights what's ready to harvest and what needs water, ranks every mutation on a
@@ -53,8 +53,15 @@ The plant data and pictures in `assets/greenhouse-companion/skyshards/` come fro
 
 ## Install
 
-1. Minecraft **26.1.2** with **Fabric Loader 0.19.3+**, **Fabric API 0.155.2+** and **Java 25**.
-2. Put `greenhouse-companion-<version>.jar` in your `mods` folder. Optional: the
+1. **Fabric Loader 0.19.3+** and **Java 25**, with the jar and Fabric API for your Minecraft version:
+
+   | Minecraft | Jar | Fabric API |
+   |---|---|---|
+   | 26.1.2 | `greenhouse-companion-<version>-mc26.1.2.jar` | 0.155.2+ |
+   | 26.2 | `greenhouse-companion-<version>-mc26.2.jar` | 0.161.0+ |
+   | 26.3 | `greenhouse-companion-<version>-mc26.3.jar` | 0.165.0+ |
+
+2. Put that jar in your `mods` folder. Optional: the
    [Hypixel Mod API](https://github.com/HypixelDev/ModAPI) mod, for exact location (the sidebar is used without it).
 3. Don't install it alongside the older `greenhouse-flow` mod (they conflict; this one replaces it).
 4. In game, `/ghc` opens the window. Options → Controls → Greenhouse Companion has a key for it.
@@ -305,13 +312,29 @@ Measured on the alpha (27 Oct 2026) with Crop Diagnostics, which states it exact
 ./gradlew build
 ```
 
-Needs JDK 25 (`JAVA_HOME=/path/to/jdk-25 ./gradlew build`). The jar is `build/libs/greenhouse-companion-<version>.jar`.
+Needs JDK 25 (`JAVA_HOME=/path/to/jdk-25`). It builds and unit-tests every Minecraft version. The jars are
+`build/libs/greenhouse-companion-<version>-mc<minecraft>.jar`. For one version, run `./gradlew :26.3:build`.
+[CONTRIBUTING.md](CONTRIBUTING.md) has the details, and [docs/CHANGELOG.md](docs/CHANGELOG.md) what changed in each
+release.
 
-- **Tests:** `./gradlew test`. The core is plain Java (a test keeps Minecraft out of it). Tests that replay your own
-  recordings and drop logs read your Minecraft folder: put `minecraftDir=/path/to/instance/minecraft` in
+- **Versions:** the build uses [Stonecutter](https://stonecutter.kikugie.dev/), laid out like
+  [SkyHanni](https://github.com/SkyHanniStudios/SkyHanni). One source tree is written for 26.1, and
+  `//? if >= 26.2` comments pick the code that differs between versions. Most of that code is in
+  `dev.ilyapple.ghc.mod.compat`: the current screen, HUD messages, see-through render types and key types. Each
+  version builds in `versions/<version>/`, with its Fabric Loader and Fabric API in `sharedVariables/`.
+- **Tests:** `./gradlew :26.1:test`. The core is plain Java (a test keeps Minecraft out of it). Tests that replay your
+  own recordings and drop logs read your Minecraft folder: put `minecraftDir=/path/to/instance/minecraft` in
   `local.properties` (not committed) or set `GHC_MINECRAFT_DIR`. Without it they're skipped.
-- **Demo:** `./gradlew runDemo` opens a dev client with a recording replayed into one greenhouse and saves a screenshot
-  of every page to `run/screenshots` (it needs the recordings above).
+- **Game tests:** `./gradlew :26.3:runClientGameTest` opens a client and makes a world (`src/gametest/`).
+    - The render test draws a depth-checked box, a see-through box, a name tag and the overlay's ghosts through the
+      mod's own code.
+    - The GUI test opens every page of the window and clicks every element (left and right) with real input. It
+      types into every text field, and checks Shift ×10 / Ctrl ×100, the profile menu, Escape and the inventory
+      screen's Profit panel.
+    - It writes what each element changed to `versions/<version>/build/run/clientGameTest/gui-report-<version>.txt`.
+      A crash fails the run. With `minecraftDir` set, the pages are filled from your recordings.
+- **Demo:** `./gradlew :26.1:runDemo` opens a dev client with a recording replayed into one greenhouse. It saves a
+  screenshot of every page to `versions/<version>/run/screenshots` (it needs the recordings above).
 - **Bundled data:** the leaderboard (`leaderboard/leaderboard.json`), the stage model book and the calibration table
   were made offline, the leaderboard with the SkyShards Simulator engine, and ship as JSON in
   `src/main/resources/assets/greenhouse-companion/`. The tools that made them aren't part of this repository.
@@ -325,4 +348,7 @@ Greenhouse Companion is licensed under the **GNU GPL v3.0 only** ([LICENSE](LICE
 - **MagicAddons** (GPL-3.0): the stage models in `models/magicaddons-stages.json`.
 - **Skyblocker** (LGPL-3.0): greenhouse geometry, the Carpenter check, and its paste preview as a reference for the
   overlay. Own code; Skyblocker isn't needed at runtime.
+- **Parallax** (BSD-3-Clause, © Starred, [LICENSE-parallax.txt](LICENSE-parallax.txt)), Athen's 3D renderer: the world
+  boxes (`render/Boxes`: its render queue and box renderer) and their depth-checked and see-through pipelines for each
+  Minecraft version (`compat/BoxPipelines`: its pipeline builder, depth modes and render types), ported to Java.
 - **Athen:** the virtual-canvas idea (`Resolute`) behind the window's scaling.

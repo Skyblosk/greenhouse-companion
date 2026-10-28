@@ -5,13 +5,8 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
 
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.decoration.ArmorStand;
@@ -236,25 +231,15 @@ public final class Highlight {
 		return bigger.minY < GROUND && box.minY >= GROUND - 1e-6 ? new AABB(bigger.minX, GROUND, bigger.minZ, bigger.maxX, bigger.maxY, bigger.maxZ) : bigger;
 	}
 
-	/** Drawn after translucent terrain, where Athen draws its boxes; through blocks only when chosen. */
-	public static void render(LevelRenderContext context) {
+	/** What to draw this frame: each outline a hair bigger, filled faintly in its colour. */
+	public static List<Boxes.Box> drawn() {
 		List<Box> current = boxes;
-		if (current.isEmpty() || !(context.bufferSource() instanceof MultiBufferSource.BufferSource buffers)) return;
-		CameraRenderState camera = context.levelState().cameraRenderState;
-		if (camera == null || camera.pos == null) return;
-		boolean through = GreenhouseCompanion.settings().highlightThroughBlocks;
-		PoseStack poseStack = context.poseStack();
-		poseStack.pushPose();
-		poseStack.translate(-camera.pos.x, -camera.pos.y, -camera.pos.z);
-		PoseStack.Pose pose = poseStack.last();
-		var fillType = through ? Depthless.FILLED : net.minecraft.client.renderer.rendertype.RenderTypes.debugFilledBox();
-		VertexConsumer fill = buffers.getBuffer(fillType);
-		for (Box box : current) Depthless.filled(fill, pose, inflateAboveGround(box.box()), Theme.alpha(box.color(), 0x2C));
-		buffers.endBatch(fillType);
-		var lineType = through ? Depthless.LINES : net.minecraft.client.renderer.rendertype.RenderTypes.lines();
-		VertexConsumer lines = buffers.getBuffer(lineType);
-		for (Box box : current) Depthless.outline(lines, pose, inflateAboveGround(box.box()), LINE_WIDTH, Theme.alpha(box.color(), 0xFF));
-		buffers.endBatch(lineType);
-		poseStack.popPose();
+		if (current.isEmpty()) return List.of();
+		List<Boxes.Box> out = new ArrayList<>(current.size());
+		for (Box box : current) {
+			AABB shown = inflateAboveGround(box.box());
+			out.add(new Boxes.Box(shown, Theme.alpha(box.color(), 0x2C), Theme.alpha(box.color(), 0xFF), LINE_WIDTH));
+		}
+		return out;
 	}
 }

@@ -88,7 +88,7 @@ public final class DropsPanel {
 	private static boolean visible() {
 		Settings settings = GreenhouseCompanion.settings();
 		Minecraft client = Minecraft.getInstance();
-		return settings.recordDrops && settings.dropsIcon && !client.options.hideGui && client.player != null && GreenhouseCompanion.location().inGarden();
+		return settings.recordDrops && settings.dropsIcon && !dev.ilyapple.ghc.mod.compat.Mc.hudHidden() && client.player != null && GreenhouseCompanion.location().inGarden();
 	}
 
 	// On other screens
@@ -131,7 +131,7 @@ public final class DropsPanel {
 	}
 
 	private static boolean click(Screen screen, double mouseX, double mouseY, int button) {
-		if (screen != drawnOn || button != 0) return false;
+		if (screen != drawnOn || button != com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT) return false;
 		for (int i = areas.size() - 1; i >= 0; i--) {
 			if (!areas.get(i).contains(mouseX, mouseY)) continue;
 			areas.get(i).action().run();
@@ -191,7 +191,7 @@ public final class DropsPanel {
 		if (!inWindow) {
 			rx -= smallButton(g, font, mouseX, mouseY, "✕", rx - smallWidth(font, "✕"), y + 2, Theme.DIM, clicks, () -> open = false) + 3;
 			rx -= smallButton(g, font, mouseX, mouseY, "Open ↗", rx - smallWidth(font, "Open ↗"), y + 2, Theme.INFO, clicks,
-					() -> Minecraft.getInstance().setScreen(new CompanionScreen(null, CompanionScreen.Page.DROPS))) + 3;
+					() -> dev.ilyapple.ghc.mod.compat.Mc.setScreen(new CompanionScreen(null, CompanionScreen.Page.DROPS))) + 3;
 		}
 		boolean armed = resetArmedAll == allTime && System.currentTimeMillis() - resetArmedMs < 4_000;
 		String resetLabel = armed ? "Click again: reset " + (allTime ? "all time" : "session") : "Reset";

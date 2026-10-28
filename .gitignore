@@ -1,31 +1,42 @@
-# Gradle, IDEs, the OS
+# Gradle and build output: every version's build is in versions/<version>/build (its game tests' runs, reports and
+# screenshots too), and the jars are in build/libs
 .gradle/
+.kotlin/
 build/
 out/
 bin/
+
+# Jars: attach the ones in build/libs to the GitHub release instead
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDEs and the OS
 .idea/
 *.iml
 .vscode/
 .DS_Store
 
-# Dev client (./gradlew runClient / runDemo) and its logs
+# Dev clients (./gradlew :26.1:runClient / runDemo run in versions/<version>/run) and what they leave behind
 run/
 logs/
 mods/
+crash-reports/
+hs_err_pid*.log
+*.hprof
 
-# Your own machine: the Minecraft folder the demo and replay tests read (see build.gradle)
+# Your own machine: the Minecraft folder the demo and replay tests read (see build.gradle.kts)
 local.properties
 
 # Personal notes, test reports and sample jars
 replay-report.md
 water-tests.md
 samples/
-*.jar
-!gradle/wrapper/gradle-wrapper.jar
+dist/
 
-# Offline tools that made the bundled data (the mod never runs them), and the Ironman flows (also inside leaderboard.json)
+# Offline tools that made the bundled data (the mod never runs them), and the Ironman flows (also in leaderboard.json)
 scripts/
 ironman-flows/
+
 # A downloaded SkyShards engine is never committed
 engines/
 *.patched.js

@@ -48,12 +48,13 @@ final class MenuReader {
 	}
 
 	void tick(Minecraft client) {
-		if (!(client.screen instanceof AbstractContainerScreen<?> container)) {
+		Screen current = dev.ilyapple.ghc.mod.compat.Mc.screen();
+		if (!(current instanceof AbstractContainerScreen<?> container)) {
 			screen = null;
 			return;
 		}
-		if (client.screen != screen) {
-			screen = client.screen;
+		if (current != screen) {
+			screen = current;
 			stableTicks = 0;
 			signature = "";
 			done = false;

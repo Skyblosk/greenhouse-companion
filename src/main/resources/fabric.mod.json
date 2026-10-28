@@ -10,9 +10,9 @@
   "license": "GPL-3.0-only",
   "environment": "client",
   "depends": {
-    "fabricloader": ">=0.19.3",
-    "fabric-api": ">=0.155.2+26.1.2",
-    "minecraft": "~26.1.2",
+    "fabricloader": "${loader_dependency}",
+    "fabric-api": "${fabric_api_dependency}",
+    "minecraft": "${minecraft_dependency}",
     "java": ">=25"
   },
   "entrypoints": {

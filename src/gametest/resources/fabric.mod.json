@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "greenhouse-companion-gametest",
+  "version": "1.0.0",
+  "name": "Greenhouse Companion render test",
+  "environment": "client",
+  "entrypoints": {
+    "fabric-client-gametest": [
+      "dev.ilyapple.ghc.mod.render.RenderGameTest",
+      "dev.ilyapple.ghc.mod.GuiGameTest"
+    ]
+  },
+  "depends": {
+    "greenhouse-companion": "*"
+  }
+}
