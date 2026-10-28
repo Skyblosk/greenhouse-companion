@@ -4,9 +4,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
+import org.jspecify.annotations.Nullable;
+
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.core.BlockPos;
 
@@ -35,9 +38,17 @@ final class DevDemo {
 	static void install(ModState state) {
 		String folder = System.getProperty("ghc.demo");
 		if (folder == null) return;
-		String flowFile = System.getProperty("ghc.demo.flow");
+		seed(state, Path.of(folder), System.getProperty("ghc.demo.flow"));
+		ClientTickEvents.END_CLIENT_TICK.register(DevDemo::tick);
+	}
+
+	/**
+	 * The demo's greenhouse from a recording ({@code folder}), its flows, a second profile, the clock and some sacks;
+	 * the window's GUI game test fills its pages with the same.
+	 */
+	public static void seed(ModState state, Path folder, @Nullable String flowFile) {
 		try {
-			Replay replay = Replay.load(Path.of(folder), state.table(), GrowthClock.DEFAULT_PERIOD_MS);
+			Replay replay = Replay.load(folder, state.table(), GrowthClock.DEFAULT_PERIOD_MS);
 			Map<String, StageTracker> trackers = replay.finalTrackers(state.table());
 			// The greenhouse with the most Jellybeans in the recording, unless one is named
 			String siteKey = System.getProperty("ghc.demo.site");
@@ -74,11 +85,10 @@ final class DevDemo {
 		} catch (Exception e) {
 			GreenhouseCompanion.LOGGER.error("[GHC] Demo setup failed", e);
 		}
-		ClientTickEvents.END_CLIENT_TICK.register(DevDemo::tick);
 	}
 
 	/** Made-up harvests for the Drops page's screenshot (this session's book only), and water that's had a few ticks. */
-	private static void seedDropsAndWater() {
+	public static void seedDropsAndWater() {
 		dev.ilyapple.ghc.core.drops.DropBook book = GreenhouseCompanion.drops().session();
 		String[][] harvests = {{"shadevine", "180"}, {"ashwreath", "64"}, {"magic_jellybean", "16"}, {"zombud", "22"}, {"wheat", "420"}, {"wild_rose", "96"}};
 		for (String[] harvest : harvests) {
@@ -108,20 +118,21 @@ final class DevDemo {
 
 	private static void tick(Minecraft client) {
 		// The first menu after loading: the title screen, or the accessibility screen on a fresh run folder
-		if (!opened && client.getOverlay() == null && client.screen != null && !(client.screen instanceof CompanionScreen)) {
+		Screen current = dev.ilyapple.ghc.mod.compat.Mc.screen();
+		if (!opened && !dev.ilyapple.ghc.mod.compat.Mc.loading() && current != null && !(current instanceof CompanionScreen)) {
 			opened = true;
 			// With the debug stream on, identify again now that it is listening, so the run shows a live event
 			if (DebugStream.on() && demoSite != null) GreenhouseCompanion.identify(client, demoSite, true);
 			seedDropsAndWater();
-			client.setScreen(new CompanionScreen(client.screen instanceof TitleScreen ? client.screen : new TitleScreen(), CompanionScreen.Page.OVERVIEW));
+			dev.ilyapple.ghc.mod.compat.Mc.setScreen(new CompanionScreen(current instanceof TitleScreen ? current : new TitleScreen(), CompanionScreen.Page.OVERVIEW));
 			frames = 0;
 			return;
 		}
-		if (!(client.screen instanceof CompanionScreen screen)) return;
+		if (!(current instanceof CompanionScreen screen)) return;
 		frames++;
 		if (frames % 40 != 0) return;
 		if (shot < SHOTS.length) {
-			Screenshot.grab(client.gameDirectory, "ghc-" + SHOTS[shot] + ".png", client.getMainRenderTarget(), 1, message -> {});
+			Screenshot.grab(client.gameDirectory, "ghc-" + SHOTS[shot] + ".png", dev.ilyapple.ghc.mod.compat.Mc.mainTarget(), 1, message -> {});
 			shot++;
 			if (shot < SHOTS.length) screen.demo(shot);
 		} else if (Boolean.getBoolean("ghc.demo.quit")) {

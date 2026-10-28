@@ -108,9 +108,9 @@ public final class Protection {
 		if (now - lastMessageMs < MESSAGE_EVERY_MS) return;
 		lastMessageMs = now;
 		Minecraft client = Minecraft.getInstance();
-		client.gui.setOverlayMessage(Component.literal("✋ " + why + " · hold ").withColor(0xFFFBBF24)
+		dev.ilyapple.ghc.mod.compat.Mc.actionBar(Component.literal("✋ " + why + " · hold ").withColor(0xFFFBBF24)
 				.append(bypass.getTranslatedKeyMessage().copy().withColor(0xFFF8FAFC))
-				.append(Component.literal(" to break anyway").withColor(0xFFFBBF24)), false);
+				.append(Component.literal(" to break anyway").withColor(0xFFFBBF24)));
 	}
 
 	private static boolean holdingDiagnostics() {

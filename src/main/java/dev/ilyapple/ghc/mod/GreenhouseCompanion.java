@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.Set;
 
 import org.jspecify.annotations.Nullable;
-import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -156,19 +155,19 @@ public final class GreenhouseCompanion implements ClientModInitializer {
 		LOGGER.info("[GHC] Looks from the {}; models from {}", state.tableSource(), state.table().models() == null ? "nothing" : state.table().models().source());
 
 		KeyMapping.Category category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath(MOD_ID, "main"));
-		openKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.greenhouse-companion.open", InputConstants.Type.KEYSYM, InputConstants.UNKNOWN.getValue(), category));
-		bypassKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.greenhouse-companion.bypass", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT_ALT, category));
+		openKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.greenhouse-companion.open", dev.ilyapple.ghc.mod.compat.Mc.keyboard(), InputConstants.UNKNOWN.getValue(), category));
+		bypassKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.greenhouse-companion.bypass", dev.ilyapple.ghc.mod.compat.Mc.keyboard(), InputConstants.KEY_LALT, category));
 		protection = new Protection(settings, bypassKey);
 		drops = new DropRecorder(settings, FabricLoader.getInstance().getConfigDir());
 		Prices.init(FabricLoader.getInstance().getConfigDir());
 		dev.ilyapple.ghc.mod.ui.DropsPanel.register();
 
 		HiddenBlockModel.register();
-		dev.ilyapple.ghc.mod.render.Depthless.init();
+		dev.ilyapple.ghc.mod.compat.BoxPipelines.init();
 		LevelRenderEvents.COLLECT_SUBMITS.register(WorldLabels::render);
 		LevelRenderEvents.COLLECT_SUBMITS.register(dev.ilyapple.ghc.mod.render.LayoutOverlay::render);
-		LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(dev.ilyapple.ghc.mod.render.Highlight::render);
-		LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(dev.ilyapple.ghc.mod.render.LayoutOverlay::renderBoxes);
+		dev.ilyapple.ghc.mod.render.Boxes.register(dev.ilyapple.ghc.mod.render.Highlight::drawn, () -> settings.highlightThroughBlocks);
+		dev.ilyapple.ghc.mod.render.Boxes.register(dev.ilyapple.ghc.mod.render.LayoutOverlay::drawn, () -> settings.overlaySeeThrough);
 		HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "hud"), new CompanionHud());
 
 		ClientTickEvents.END_CLIENT_TICK.register(GreenhouseCompanion::tick);
@@ -224,12 +223,12 @@ public final class GreenhouseCompanion implements ClientModInitializer {
 
 	private static void tick(Minecraft client) {
 		tick++;
-		if (openPage != null && client.screen == null) {
-			client.setScreen(new CompanionScreen(null, openPage));
+		if (openPage != null && dev.ilyapple.ghc.mod.compat.Mc.screen() == null) {
+			dev.ilyapple.ghc.mod.compat.Mc.setScreen(new CompanionScreen(null, openPage));
 			openPage = null;
 		}
 		while (openKey.consumeClick()) {
-			if (client.screen == null) client.setScreen(new CompanionScreen(null, CompanionScreen.Page.OVERVIEW));
+			if (dev.ilyapple.ghc.mod.compat.Mc.screen() == null) dev.ilyapple.ghc.mod.compat.Mc.setScreen(new CompanionScreen(null, CompanionScreen.Page.OVERVIEW));
 		}
 		watcher.tick(client);
 		menus.tick(client);
@@ -268,7 +267,7 @@ public final class GreenhouseCompanion implements ClientModInitializer {
 		Minecraft client = Minecraft.getInstance();
 		if (settings.tickChime && client.player != null) {
 			client.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_CHIME, 1.4f));
-			client.gui.setOverlayMessage(Component.literal("Greenhouse growth tick").withColor(0xFF34D399), false);
+			dev.ilyapple.ghc.mod.compat.Mc.actionBar(Component.literal("Greenhouse growth tick").withColor(0xFF34D399));
 		}
 	}
 
@@ -534,8 +533,8 @@ public final class GreenhouseCompanion implements ClientModInitializer {
 				case PLANTED -> "planted";
 				case UNKNOWN -> "origin unknown";
 			};
-			client.gui.setOverlayMessage(Component.literal(after.plant().name() + ": " + WorldLabels.stageText(after.stages(), after.plant()) + " · " + origin
-					+ (reading.stalled() ? " · " + reading.status() : "") + " (from the Plant Diagnostics Tool)").withColor(0xFF34D399), false);
+			dev.ilyapple.ghc.mod.compat.Mc.actionBar(Component.literal(after.plant().name() + ": " + WorldLabels.stageText(after.stages(), after.plant()) + " · " + origin
+					+ (reading.stalled() ? " · " + reading.status() : "") + " (from the Plant Diagnostics Tool)").withColor(0xFF34D399));
 		}
 	}
 
@@ -571,8 +570,8 @@ public final class GreenhouseCompanion implements ClientModInitializer {
 					.append(Component.literal(" — " + because + " ").withColor(0xFF94A3B8))
 					.append(Component.literal("[Open]").withStyle(style -> style.withColor(ChatFormatting.GREEN).withClickEvent(new ClickEvent.RunCommand("/ghc"))));
 			if (settings.alertTitle) {
-				client.gui.setTitle(Component.literal("Swap to " + swap.to().label()).withColor(0xFFFBBF24));
-				client.gui.setSubtitle(Component.literal(siteLabel(site)).withColor(0xFF94A3B8));
+				dev.ilyapple.ghc.mod.compat.Mc.title(Component.literal("Swap to " + swap.to().label()).withColor(0xFFFBBF24),
+						Component.literal(siteLabel(site)).withColor(0xFF94A3B8));
 			}
 		}
 		// The chime and chat line are part of the swap alert (sub-settings of its title)

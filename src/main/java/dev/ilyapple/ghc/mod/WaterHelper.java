@@ -129,15 +129,16 @@ public final class WaterHelper {
 	 */
 	static @Nullable Bar bar(Component name) {
 		int[] counts = new int[4];
-		int blue = ChatFormatting.BLUE.getColor();
-		int red = ChatFormatting.RED.getColor();
-		Set<Integer> empty = Set.of(ChatFormatting.WHITE.getColor(), ChatFormatting.GRAY.getColor(), ChatFormatting.DARK_GRAY.getColor());
+		// The chat colours' RGB values (BLUE, RED; WHITE, GRAY, DARK_GRAY), the same in every version
+		int blue = 0x5555FF;
+		int red = 0xFF5555;
+		Set<Integer> empty = Set.of(0xFFFFFF, 0xAAAAAA, 0x555555);
 		name.visit((Style style, String text) -> {
 			int notches = 0;
 			for (char c : text.toCharArray()) if (c == '|') notches++;
 			if (notches == 0) return Optional.empty();
 			TextColor color = style.getColor();
-			int value = color == null ? ChatFormatting.WHITE.getColor() : color.getValue();
+			int value = color == null ? 0xFFFFFF : color.getValue();
 			if (value == blue) counts[0] += notches;
 			else if (value == red) counts[1] += notches;
 			else if (empty.contains(value)) counts[2] += notches;

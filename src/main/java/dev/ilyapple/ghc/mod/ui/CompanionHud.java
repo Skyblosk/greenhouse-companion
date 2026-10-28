@@ -33,7 +33,7 @@ public final class CompanionHud implements HudElement {
 	public void extractRenderState(GuiGraphicsExtractor g, DeltaTracker delta) {
 		Settings settings = GreenhouseCompanion.settings();
 		Minecraft client = Minecraft.getInstance();
-		if (!settings.hud || client.options.hideGui || client.player == null || client.screen instanceof CompanionScreen) return;
+		if (!settings.hud || dev.ilyapple.ghc.mod.compat.Mc.hudHidden() || client.player == null || dev.ilyapple.ghc.mod.compat.Mc.screen() instanceof CompanionScreen) return;
 		boolean garden = GreenhouseCompanion.location().inGarden();
 		if (settings.hudOnlyInGarden && !garden) return;
 

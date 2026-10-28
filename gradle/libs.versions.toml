@@ -1,0 +1,9 @@
+[versions]
+loom = "1.17-SNAPSHOT"
+hypixel-mod-api = "1.0.2"
+
+[libraries]
+hypixel-mod-api = { module = "net.hypixel:mod-api", version.ref = "hypixel-mod-api" }
+
+[plugins]
+loom = { id = "net.fabricmc.fabric-loom", version.ref = "loom" }

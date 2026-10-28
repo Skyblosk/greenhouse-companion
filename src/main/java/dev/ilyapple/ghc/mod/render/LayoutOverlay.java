@@ -25,7 +25,6 @@ import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.object.skull.SkullModelBase;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
 import net.minecraft.client.renderer.blockentity.SkullBlockRenderer;
@@ -250,29 +249,18 @@ public final class LayoutOverlay {
 		}
 	}
 
-	/** The boxes, drawn after translucent terrain with Athen's depthless lines so they show through crops. */
-	public static void renderBoxes(LevelRenderContext context) {
+	/** The boxes to draw this frame, faintly filled in their action's colour (Athen's depthless lines through crops). */
+	public static List<Boxes.Box> drawn() {
 		List<Part> current = parts;
-		if (current.isEmpty() || !(context.bufferSource() instanceof MultiBufferSource.BufferSource buffers)) return;
-		CameraRenderState camera = context.levelState().cameraRenderState;
-		if (camera == null || camera.pos == null) return;
-		boolean through = GreenhouseCompanion.settings().overlaySeeThrough;
-		PoseStack poseStack = context.poseStack();
-		poseStack.pushPose();
-		poseStack.translate(-camera.pos.x, -camera.pos.y, -camera.pos.z);
-		PoseStack.Pose pose = poseStack.last();
-		VertexConsumer fill = buffers.getBuffer(through ? Depthless.FILLED : RenderTypes.debugFilledBox());
-		for (Part part : current) if (part.box() != null) Depthless.filled(fill, pose, part.box(), Theme.alpha(part.color(), 0x22));
-		buffers.endBatch(through ? Depthless.FILLED : RenderTypes.debugFilledBox());
-		VertexConsumer lines = buffers.getBuffer(through ? Depthless.LINES : RenderTypes.lines());
-		for (Part part : current) if (part.box() != null) Depthless.outline(lines, pose, part.box(), LINE_WIDTH, part.color());
-		buffers.endBatch(through ? Depthless.LINES : RenderTypes.lines());
-		poseStack.popPose();
+		if (current.isEmpty()) return List.of();
+		List<Boxes.Box> out = new ArrayList<>();
+		for (Part part : current) if (part.box() != null) out.add(new Boxes.Box(part.box(), Theme.alpha(part.color(), 0x22), part.color(), LINE_WIDTH));
+		return out;
 	}
 
 	// Ghosts (after GreenEssentials' GhostGeometry and Skyblocker's renderPreview)
 
-	private static void head(@Nullable String texture, PoseStack stack, SubmitNodeCollector collector) {
+	static void head(@Nullable String texture, PoseStack stack, SubmitNodeCollector collector) {
 		if (texture == null) return;
 		Minecraft client = Minecraft.getInstance();
 		if (entityModels != client.getEntityModels()) {
@@ -291,7 +279,7 @@ public final class LayoutOverlay {
 		});
 	}
 
-	private static void block(@Nullable BlockState state, PoseStack stack, SubmitNodeCollector collector, int color) {
+	static void block(@Nullable BlockState state, PoseStack stack, SubmitNodeCollector collector, int color) {
 		if (state == null) return;
 		var model = Minecraft.getInstance().getModelManager().getBlockStateModelSet().get(state);
 		List<BlockStateModelPart> modelParts = new ArrayList<>();

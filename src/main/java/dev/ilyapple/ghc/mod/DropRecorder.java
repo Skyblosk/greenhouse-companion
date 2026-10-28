@@ -319,7 +319,7 @@ public final class DropRecorder {
 
 	/** Inventory gains in base units while no screen is open, not just after a pest kill; rare drops come from chat. */
 	private void readInventory(Minecraft client, long now) {
-		if (client.screen != null || now - lastPestMs < PEST_QUIET_MS || !GreenhouseCompanion.location().inGarden()) {
+		if (dev.ilyapple.ghc.mod.compat.Mc.screen() != null || now - lastPestMs < PEST_QUIET_MS || !GreenhouseCompanion.location().inGarden()) {
 			lastInventory = null;
 			return;
 		}

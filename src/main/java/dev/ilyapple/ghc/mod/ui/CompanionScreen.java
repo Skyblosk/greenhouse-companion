@@ -298,7 +298,7 @@ public final class CompanionScreen extends Screen {
 		lastPage = page;
 		state().save();
 		settings().save();
-		minecraft.setScreen(parent);
+		dev.ilyapple.ghc.mod.compat.Mc.setScreen(parent);
 	}
 
 	@Override
@@ -729,7 +729,7 @@ public final class CompanionScreen extends Screen {
 			int moveX = buttonX + 4;
 			hotspotsReplaceLast(new Hotspot(moveX, y + h - 22, font.width("Move ▸") + 12, Theme.BUTTON_H, event -> {
 				int index = profiles.indexOf(state().profileOf(site));
-				ModState.Profile target = profiles.get(Math.floorMod(index + (event.button() == 1 ? -1 : 1), profiles.size()));
+				ModState.Profile target = profiles.get(Math.floorMod(index + (event.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT ? -1 : 1), profiles.size()));
 				state().moveTo(site, target);
 				state().setNote(site, "Moved to profile " + target.name());
 				state().save();
@@ -802,7 +802,7 @@ public final class CompanionScreen extends Screen {
 				List<Flows.Plot> plots = flows.plots();
 				int index = -1;
 				for (int i = 0; i < plots.size(); i++) if (assignment != null && plots.get(i).id() == assignment.plotId()) index = i;
-				int next = event.button() == 1 ? index - 1 : index + 1;
+				int next = event.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT ? index - 1 : index + 1;
 				state().assign(site, next < 0 || next >= plots.size() ? null : plots.get(next).id(), false);
 				state().setNote(site, "Picked by you");
 				dev.ilyapple.ghc.mod.render.LayoutOverlay.clear();
@@ -1244,8 +1244,9 @@ public final class CompanionScreen extends Screen {
 	@Override
 	public boolean keyPressed(net.minecraft.client.input.KeyEvent event) {
 		int key = event.key();
-		boolean enter = key == org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER || key == org.lwjgl.glfw.GLFW.GLFW_KEY_KP_ENTER;
-		if (profileMenu && key == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE) {
+		boolean enter = key == com.mojang.blaze3d.platform.InputConstants.KEY_RETURN || key == com.mojang.blaze3d.platform.InputConstants.KEY_NUMPADENTER;
+		boolean escape = key == com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE;
+		if (profileMenu && escape) {
 			profileMenu = false;
 			if (renamingProfile) {
 				renamingProfile = false;
@@ -1262,7 +1263,7 @@ public final class CompanionScreen extends Screen {
 				applyCount();
 				return true;
 			}
-			if (key == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE) {
+			if (escape) {
 				countItem = null;
 				rebuildWidgets();
 				return true;
@@ -1674,7 +1675,7 @@ public final class CompanionScreen extends Screen {
 		smallButton(g, mouseX, mouseY, "Open folder", x + leftW - folderW, y - 3, Theme.DIM, () -> {
 			try {
 				java.nio.file.Files.createDirectories(state().flowFolder());
-				net.minecraft.util.Util.getPlatform().openPath(state().flowFolder());
+				dev.ilyapple.ghc.mod.compat.Mc.openFolder(state().flowFolder());
 			} catch (java.io.IOException | RuntimeException e) {
 				importStatus = "Couldn't open " + state().flowFolder() + ": " + e.getMessage();
 				importColor = Theme.DANGER;
@@ -1926,7 +1927,8 @@ public final class CompanionScreen extends Screen {
 				boolean overCount = mouseX >= tx - 2 && mouseX < tx + font.width(total) + 2 && mouseY >= cy && mouseY < cy + rowHeight - 2;
 				if (overCount) g.fill(tx, cy + 16, tx + font.width(total), cy + 17, Theme.alpha(Theme.SUCCESS, 0x99));
 				addHotspot(new Hotspot(tx - 2, cy, font.width(total) + 4, rowHeight - 2, event -> {
-					if (event.button() == 1) {
+					// Right click: back to the sack count (the button numbers differ by version: 26.3 counts from 1)
+					if (event.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT) {
 						state.inventory().set(plant.id(), state.inventory().sackCount(plant.id()));
 						state.markDirty();
 						return;
@@ -1980,10 +1982,10 @@ public final class CompanionScreen extends Screen {
 		}
 	}
 
+	/** 1, or 10 with Shift, 100 with Ctrl (the game's own checks: 26.3 numbers the modifier keys differently). */
 	private static int step(MouseButtonEvent event) {
-		int modifiers = event.modifiers();
-		if ((modifiers & 2) != 0) return 100;
-		if ((modifiers & 1) != 0) return 10;
+		if (event.hasControlDown()) return 100;
+		if (event.hasShiftDown()) return 10;
 		return 1;
 	}
 

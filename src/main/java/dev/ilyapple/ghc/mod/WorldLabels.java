@@ -61,8 +61,7 @@ public final class WorldLabels {
 			if (distanceSq > rangeSq) continue;
 			pose.pushPose();
 			pose.translate(label.position().x - camera.pos.x, label.position().y - camera.pos.y, label.position().z - camera.pos.z);
-			collector.submitNameTag(pose, Vec3.ZERO, 0, Component.literal(label.text()).withColor(label.color()), true,
-					LightCoordsUtil.FULL_BRIGHT, distanceSq, camera);
+			dev.ilyapple.ghc.mod.compat.Mc.nameTag(collector, pose, Component.literal(label.text()).withColor(label.color()), distanceSq, camera);
 			pose.popPose();
 		}
 	}
