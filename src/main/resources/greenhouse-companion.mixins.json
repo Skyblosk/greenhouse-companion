@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "package": "dev.ilyapple.ghc.mod.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "ArmorStandMixin",
+    "BlockDisplayInvoker",
+    "EntityRenderDispatcherMixin",
+    "MinecraftMixin",
+    "MultiPlayerGameModeMixin",
+    "TextDisplayInvoker"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

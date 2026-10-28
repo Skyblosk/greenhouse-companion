@@ -1,0 +1,195 @@
+{
+  "kind": "skyshards-greenhouse-flows",
+  "version": 2,
+  "plots": [
+    {
+      "id": 1,
+      "flow": {
+        "steps": [
+          {
+            "id": "step-1",
+            "label": "Jellybean",
+            "layout": {
+              "code": "M9Mx1ynVMUzRKaoxNNTJq0mEgaREx2RHMHZKTE5OTAYRTomOUJiUCBQBY4QYQh2yXhhwckpySklNAlEA"
+            },
+            "exits": [
+              {
+                "when": [
+                  {
+                    "kind": "mutationSpawned",
+                    "mutationId": "magic_jellybean",
+                    "count": 16
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "step-2",
+            "label": "Jellybean + Shadevine",
+            "layout": {
+              "code": "LYw9DoBQCIMv1IVBnXsUftTNwfkd3kJMKUmbD3YcKJhhgxXe9SxnMGVNZXl7Go6pJqQM7-TTKlMSl5mnlq7rFz2acg5_3fP4Aw"
+            },
+            "exits": [
+              {
+                "when": [
+                  {
+                    "kind": "mutationHarvested",
+                    "mutationId": "magic_jellybean",
+                    "count": 16
+                  }
+                ]
+              }
+            ],
+            "policies": {
+              "layoutInputSpawns": "harvest"
+            }
+          }
+        ],
+        "loop": true,
+        "startIndex": 0
+      }
+    },
+    {
+      "id": 2,
+      "flow": {
+        "steps": [
+          {
+            "id": "step-1",
+            "label": "Jellybean",
+            "layout": {
+              "code": "M9Mx1ynVMUzRKaoxNNTJq0mEgaREx2RHMHZKTE5OTAYRTomOUJiUCBQBY4QYQh2yXhhwckpySklNAlEA"
+            },
+            "exits": [
+              {
+                "when": [
+                  {
+                    "kind": "mutationSpawned",
+                    "mutationId": "magic_jellybean",
+                    "count": 16
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "step-2",
+            "label": "Jellybean + Shadevine",
+            "layout": {
+              "code": "LYw9DoBQCIMv1IVBnXsUftTNwfkd3kJMKUmbD3YcKJhhgxXe9SxnMGVNZXl7Go6pJqQM7-TTKlMSl5mnlq7rFz2acg5_3fP4Aw"
+            },
+            "exits": [
+              {
+                "when": [
+                  {
+                    "kind": "mutationHarvested",
+                    "mutationId": "magic_jellybean",
+                    "count": 16
+                  }
+                ]
+              }
+            ],
+            "policies": {
+              "layoutInputSpawns": "harvest"
+            }
+          }
+        ],
+        "loop": true,
+        "startIndex": 0
+      }
+    },
+    {
+      "id": 3,
+      "flow": {
+        "steps": [
+          {
+            "id": "step-1",
+            "label": "Jellybean + Duskbloom",
+            "layout": {
+              "code": "Rco7CoAwEEXRDT3ENFr72cibTIymSCHYZfEOgxhudzkTHoyIqBAUzLhbQQg2ayOFjIvF1VJNqmJPjs3yl3LOyV1_7ijdye_4uYH7ebl7AQ"
+            },
+            "exits": [
+              {
+                "when": [
+                  {
+                    "kind": "mutationSpawned",
+                    "mutationId": "magic_jellybean",
+                    "count": 8
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "step-2",
+            "label": "Jellybean + Shadevine + Duskbloom",
+            "layout": {
+              "code": "XYsxCoAwEAQ_tIUp1Pr0JXe5JHpCCsEuj_cUTCEDWwyzExQDQsCMiArBCMPZqu_VmIQ4Lo5oUsm55CxEJNvqiLLuxcxK6o5693w_5-W_Y0rH290"
+            },
+            "exits": [
+              {
+                "when": [
+                  {
+                    "kind": "mutationHarvested",
+                    "mutationId": "magic_jellybean",
+                    "count": 8
+                  }
+                ]
+              }
+            ],
+            "policies": {
+              "layoutInputSpawns": "harvest"
+            }
+          }
+        ],
+        "loop": true,
+        "startIndex": 0
+      }
+    }
+  ],
+  "settings": {
+    "policies": {
+      "spawnedHarvest": "whenFullyGrown",
+      "layoutInputSpawns": "keep",
+      "baseCropUpkeep": "harvestWhenGrown",
+      "watering": "toMax",
+      "gateInteractions": {
+        "wakeSnoozling": true,
+        "vacuumRat": true,
+        "dischargeThunderling": true,
+        "noctilumeTime": true,
+        "feedFleshtrap": true,
+        "clearRoots": true
+      },
+      "replaceDecayed": true,
+      "fixGround": true,
+      "clearTargetBlockers": true
+    },
+    "playerActions": true,
+    "config": {
+      "waterLossMin": 18,
+      "waterLossMax": 22,
+      "negativeWaterSkipChance": 0.5,
+      "chorusTeleportTargets": "emptyOnly",
+      "chorusOverflow": true,
+      "soggybudWaterPerNeighbour": 2,
+      "soggybudWaterPerStage": 10,
+      "capRareCropChance": false,
+      "fleshtrapHungerPerStage": 1,
+      "fleshtrapFeedHunger": 6,
+      "aloeAutoHarvest": true,
+      "aloeHarvestStage": 14,
+      "armorRareCropBug": true,
+      "mutationCreditOrder": "ringOrder",
+      "keepIdenticalOnStepChange": true,
+      "spawnsFillLayoutInputs": true,
+      "allowMutationDebt": false,
+      "legacyMutationYield": false,
+      "plotOrder": [
+        1,
+        2,
+        3
+      ]
+    }
+  }
+}

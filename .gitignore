@@ -1,0 +1,31 @@
+# Gradle, IDEs, the OS
+.gradle/
+build/
+out/
+bin/
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Dev client (./gradlew runClient / runDemo) and its logs
+run/
+logs/
+mods/
+
+# Your own machine: the Minecraft folder the demo and replay tests read (see build.gradle)
+local.properties
+
+# Personal notes, test reports and sample jars
+replay-report.md
+water-tests.md
+samples/
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Offline tools that made the bundled data (the mod never runs them), and the Ironman flows (also inside leaderboard.json)
+scripts/
+ironman-flows/
+# A downloaded SkyShards engine is never committed
+engines/
+*.patched.js

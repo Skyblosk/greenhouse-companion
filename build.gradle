@@ -1,0 +1,89 @@
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+version = "${project.mod_version}+${project.minecraft_version}"
+group = project.maven_group
+
+base {
+	archivesName = project.archives_base_name
+}
+
+// Your own Minecraft folder (the one with config/ in it), for the demo and the tests that replay your recordings:
+// minecraftDir=/path/to/instance/minecraft in local.properties (never committed), or GHC_MINECRAFT_DIR. Without it
+// those tests are skipped.
+def localProperties = new Properties()
+if (file('local.properties').exists()) file('local.properties').withInputStream { localProperties.load(it) }
+def minecraftDir = System.getenv('GHC_MINECRAFT_DIR') ?: localProperties.getProperty('minecraftDir', '')
+if (minecraftDir.startsWith('~')) minecraftDir = System.getProperty('user.home') + minecraftDir.substring(1)
+def recorder = minecraftDir ? "${minecraftDir}/config/greenhouse-stage-recorder" : ''
+def dropLogs = minecraftDir ? "${minecraftDir}/config/greenhouse-companion/drops" : ''
+
+repositories {
+	maven {
+		name = 'Hypixel'
+		url = 'https://repo.hypixel.net/repository/Hypixel/'
+	}
+}
+
+loom {
+	accessWidenerPath = file("src/main/resources/greenhouse-companion.accesswidener")
+	runs {
+		// ./gradlew runDemo: the window filled from a real recording, with screenshots in run/screenshots (see DevDemo)
+		demo {
+			client()
+			configName = "Demo"
+			vmArg "-Dghc.demo=${System.getenv('GHF_RECORDINGS') ?: recorder}"
+			vmArg "-Dghc.demo.flow=${projectDir}/src/test/resources/flows/jellybean-shadevine.json"
+			vmArg "-Dghc.demo.quit=true"
+			// GHC_DEBUG_STREAM=1 GHC_LINGER=60 ./gradlew runDemo: the debug stream on, and the client up a minute after the screenshots
+			if (System.getenv('GHC_DEBUG_STREAM')) vmArg "-Dghc.debug.stream=true"
+			if (System.getenv('GHC_LINGER')) vmArg "-Dghc.demo.linger=${System.getenv('GHC_LINGER')}"
+			runDir "run"
+		}
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	// The Hypixel Mod API mod is optional at runtime: Location only touches it when it is installed
+	compileOnly "net.hypixel:mod-api:${project.hypixel_mod_api_version}"
+
+	testImplementation "net.fabricmc:fabric-loader-junit:${project.loader_version}"
+}
+
+tasks.withType(ProcessResources).configureEach {
+	def version = project.version
+	inputs.property "version", version
+
+	filesMatching("fabric.mod.json") {
+		expand "version": version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 25
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}
+
+test {
+	useJUnitPlatform()
+	// The replay reads files outside the project, so never skip it as up to date
+	outputs.upToDateWhen { false }
+	// The replay tests read the recorder's real files (minecraftDir above); GHF_RECORDINGS points them elsewhere
+	environment "GHF_RECORDINGS", System.getenv("GHF_RECORDINGS") ?: recorder
+	environment "GHC_DROP_LOGS", System.getenv("GHC_DROP_LOGS") ?: dropLogs
+	environment "GHF_REPORT", System.getenv("GHF_REPORT") ?: "${projectDir}/replay-report.md"
+	environment "GHF_TRACE", System.getenv("GHF_TRACE") ?: ""
+	testLogging {
+		events "failed"
+		exceptionFormat "full"
+		showStandardStreams = true
+	}
+}

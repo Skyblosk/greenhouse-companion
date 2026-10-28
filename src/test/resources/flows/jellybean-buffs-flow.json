@@ -1,0 +1,411 @@
+{
+  "kind": "skyshards-greenhouse-flows",
+  "version": 1,
+  "plots": [
+    {
+      "id": 1,
+      "flow": {
+        "steps": [
+          {
+            "id": "step-1",
+            "label": "Thundering",
+            "layout": {
+              "code": "PYyJCQAgDAMXKoGKDuAoarqFw2vrQ0kgR5MiTSiaRPPUPtGIvjVghiurRDW_m4nH8H-4PdiJbtEI5oW3Byw"
+            },
+            "exits": [
+              {
+                "when": [
+                  {
+                    "kind": "inventoryAtLeast",
+                    "item": "thunderling",
+                    "qty": 462
+                  }
+                ],
+                "to": "step-2"
+              }
+            ]
+          },
+          {
+            "id": "step-4",
+            "label": "Snooze",
+            "layout": {
+              "code": "S9Qp0SnVydIp0ynQMagxNNbJqkl3AsJEEJmWlpaSDCRS01Mc9fSSgTjFKVVPTw-EU9JTYCynJCBIBhFwdWlOaVjUAU0CmpcCNA8A"
+            },
+            "exits": [
+              {
+                "when": [
+                  {
+                    "kind": "inventoryAtLeast",
+                    "item": "snoozling",
+                    "qty": 63
+                  }
+                ],
+                "checkOnEntry": true
+              }
+            ]
+          },
+          {
+            "id": "step-2",
+            "label": "PBA",
+            "layout": {
+              "code": "LcoxDoAgDIXhC700EqPOaC8CRRFI3Nw4vNXaqf2_BrgRLuJChSBiwoIZQ3czbk1X39rWzkA5pxaJRGRfD9LxJPuR5F1J9Ec8mVdr6qyXeeH6Oxe2xlXb54Uf"
+            },
+            "exits": [
+              {
+                "when": [
+                  {
+                    "kind": "inventoryAtLeast",
+                    "item": "plantboy_advance",
+                    "qty": 720
+                  }
+                ]
+              }
+            ],
+            "fullClear": true
+          },
+          {
+            "id": "step-7",
+            "label": "Duskies",
+            "layout": {
+              "code": "LYo7DoAgEAUvtKEzseUoyPsQCzs7Du9CzGSayRxxRosreiDueOY7r1KkLqk00lxCqAtXajhBImbhQkQ-tpHNu0H7weD4mytKTtjvBw"
+            },
+            "exits": [
+              {
+                "when": [
+                  {
+                    "kind": "inventoryAtLeast",
+                    "item": "duskbloom",
+                    "qty": 2000
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "step-5",
+            "label": "Hybridize",
+            "layout": {
+              "code": "LYwxDgAwCAI_1JB06e5T4A_dfHwD1oF4p-Gs23s3SJHwsFRDSVNkaBSLcIqK9iHy_8kbNQr45Q8"
+            },
+            "exits": [
+              {
+                "when": [
+                  {
+                    "kind": "targetsFilled",
+                    "count": 0
+                  }
+                ]
+              }
+            ],
+            "fullClear": true
+          },
+          {
+            "id": "step-3",
+            "label": "Aloe",
+            "layout": {
+              "code": "NYzBCQAgDAMXkoN-_HeUFNzC4aVGUwgkORoxYu5YW0-F0gcdiluDoOu7mWuZS6Vzu7lHq_gP4AA"
+            },
+            "exits": [
+              {
+                "to": "step-1",
+                "when": [
+                  {
+                    "kind": "inventoryBelow",
+                    "item": "plantboy_advance",
+                    "qty": 20
+                  }
+                ]
+              },
+              {
+                "when": [
+                  {
+                    "kind": "plantDecayed",
+                    "kindId": "plantboy_advance"
+                  }
+                ],
+                "match": "any",
+                "to": "step-5"
+              }
+            ]
+          }
+        ],
+        "loop": false,
+        "startIndex": 0
+      },
+      "script": {
+        "source": "// Magic Jellybean buffing (plot script)\n//\n// Just before a spawned Magic Jellybean is harvested, this swaps the placed Jellybeans\n// next to it for Cocoa Beans (Immunity) and Nether Wart (Improved Harvest Boost, +30%),\n// so the Jellybean is harvested with the best yield its neighbours allow. A Jellybean\n// is about to be harvested when it will be fully grown by the next session (it locks\n// its buffs at stage 120 and this script harvests it at that session) or when the\n// step is about to end (the step change harvests every growing Jellybean). Once the\n// Jellybean is gone the crops are broken and the Jellybeans re-placed, which takes\n// 1 Magic Jellybean from the inventory each.\n//\n// Each Jellybean is buffed on its own. For each one the script tries every way of\n// putting Cocoa Beans or Nether Wart on the cells around it and keeps the one with\n// the highest yield; ties go to the choice that starves the fewest empty spawn\n// targets (e.g. a Jellybean whose Aloe has already spawned), then to empty cells\n// over placed Jellybeans, then to fewer crops.\n\n// Cycles between your sessions (Player -> Online every N). The script measures it after\n// the second session; this is only the first guess.\nconst ONLINE_EVERY = 1;\n\n// When a placed plant of one of these kinds is about to decay before the next session,\n// the step is about to end (your Aloe step exits on \"PlantBoy Advance decayed\" and the\n// Hybridize full clear harvests every Jellybean), so every growing Jellybean gets\n// buffed first. Set it to [] to only buff Jellybeans that are about to be fully grown.\nconst STEP_ENDS_WHEN_DECAYS = [\"plantboy_advance\"];\n\n// A placed plant whose timer runs out only decays once the mutations around it are\n// used up (otherwise the game adds a day). The last few can spawn in the same tick,\n// so the step end is still expected with up to this many mutations left. Lower means\n// fewer Jellybeans spent on false alarms, higher means fewer missed step ends.\nconst MUTATIONS_SLACK = 2;\n\n// Harvest spawned Jellybeans as soon as they are fully grown. They sit on layout input\n// cells, so the \"keep layout input spawns\" policy would otherwise leave them standing.\nconst HARVEST_FULLY_GROWN = true;\n\n// Allow empty cells (never spawn targets) next to a Jellybean to hold a buff crop.\nconst USE_EMPTY_CELLS = true;\n\nconst JELLY = \"magic_jellybean\";\nconst CROPS = [\"cocoa_beans\", \"nether_wart\"]; // Immunity, Improved Harvest Boost\nconst DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];\n\n// Buff crops this script planted, by cell: { row, col, plantId, wasJelly, clients }\nlet carriers = {};\nlet lastSession = null;\nlet gap = ONLINE_EVERY;\nlet buffed = {};\nlet stats = { jellybeansBuffed: 0, cropsPlanted: 0, jellybeansSpent: 0 };\nlet effectsByKind = {};\n\nconst cellKey = (r, c) => r + \",\" + c;\nconst onPlot = (r, c) => r >= 0 && r < 10 && c >= 0 && c < 10;\n\n// Positive and negative effects a kind gives its neighbours.\nfunction effectsOf(kind) {\n  if (effectsByKind[kind] === undefined) {\n    const i = info(kind);\n    effectsByKind[kind] = i ? i.effects.concat(i.negativeEffects) : [];\n  }\n  return effectsByKind[kind];\n}\n\n// What the held effects add to the harvest multiplier.\nfunction yieldBonus(effects) {\n  const has = (e) => effects.includes(e);\n  let v = has(\"improved_harvest_boost\") ? 0.3 : has(\"harvest_boost\") ? 0.2 : 0;\n  if (has(\"harvest_loss\") && !has(\"immunity\")) v -= 0.2;\n  return v;\n}\n\nfunction onSession() {\n  if (lastSession !== null) gap = Math.max(1, cycle - lastSession);\n  lastSession = cycle;\n  if (!HARVEST_FULLY_GROWN) return;\n  // Before the built-in phases, so the layout re-places the Jellybean this session.\n  for (const p of plot.spawns(JELLY)) {\n    if (p.fullyGrown && p.harvestable) p.harvest();\n  }\n}\n\nfunction afterSession() {\n  const ctx = context(gap);\n\n  // Remove crops whose Jellybeans no longer need them.\n  const kept = {};\n  for (const k of keys(carriers)) {\n    const cr = carriers[k];\n    const here = plot.at(cr.row, cr.col);\n    const alive = !!here && here.id === cr.plantId;\n    cr.clients = cr.clients.filter((id) => ctx.want[id]);\n    if (alive && cr.clients.length > 0) {\n      kept[k] = cr;\n      continue;\n    }\n    if (alive) here.break();\n    restoreJellybean(cr, ctx);\n  }\n  carriers = kept;\n\n  for (const j of ctx.targets) buffJellybean(j, ctx);\n\n  metric(\"jellybeans buffed\", stats.jellybeansBuffed);\n  metric(\"buff crops planted\", stats.cropsPlanted);\n  metric(\"jellybeans spent on buffs\", stats.jellybeansSpent);\n}\n\n// Which Jellybeans get harvested before the next session, plus the plot lookups the\n// cell picking needs.\nfunction context(look) {\n  let stepEnding = false;\n  for (const kind of STEP_ENDS_WHEN_DECAYS) {\n    if (decaysWithin(kind, look)) stepEnding = true;\n  }\n  const targets = plot.spawns(JELLY).filter((p) =>\n    !p.fullyGrown &&\n    (p.stage + look >= p.readyStage || (stepEnding && p.stage + look >= 12)));\n\n  const want = {}, targetAt = {}, slotCells = {}, layoutJelly = {};\n  for (const j of targets) {\n    want[j.id] = true;\n    targetAt[cellKey(j.row, j.col)] = true;\n  }\n  const slots = plot.targets;\n  for (const t of slots) {\n    for (let dr = 0; dr < t.size; dr++)\n      for (let dc = 0; dc < t.size; dc++) slotCells[cellKey(t.row + dr, t.col + dc)] = true;\n  }\n  for (const p of plot.layout.plants) {\n    if (p.kind === JELLY) layoutJelly[cellKey(p.row, p.col)] = true;\n  }\n  return { targets, want, targetAt, slots, slotCells, layoutJelly, stepEnding };\n}\n\n// Will a plant of this kind decay before the next session? Its timer has to run out\n// and its mutations be used up (mutated plants of one kind share that count), give or\n// take MUTATIONS_SLACK.\nfunction decaysWithin(kind, look) {\n  const plants = plot.all(kind).filter((p) => !p.dead && p.decayCycles !== null);\n  let pooled = 0;\n  for (const p of plants) {\n    if (p.timesMutated >= 1 && typeof p.mutatesRemaining === \"number\") pooled += p.mutatesRemaining;\n  }\n  return plants.some((p) => {\n    if (p.decayCycles > look) return false;\n    const left = p.mutatesRemaining;\n    if (left === null) return true;\n    if (typeof left !== \"number\") return false; // never decays\n    return (p.timesMutated >= 1 ? pooled : left) <= MUTATIONS_SLACK;\n  });\n}\n\nfunction buffJellybean(j, ctx) {\n  const fixed = [];   // effects from neighbours that stay as they are\n  const cells = [];   // cells a crop may go on\n  const ours = [];    // our crops already next to it\n  for (const [dr, dc] of DIRS) {\n    const r = j.row + dr, c = j.col + dc;\n    if (!onPlot(r, c)) continue;\n    const n = plot.at(r, c);\n    const free = !ctx.slotCells[cellKey(r, c)];\n    if (!n) {\n      if (free && USE_EMPTY_CELLS) cells.push({ r, c, n: null, cost: 0, now: [] });\n      continue;\n    }\n    if (n.dead) continue;\n    const own = carriers[cellKey(r, c)];\n    if (own && own.plantId === n.id) ours.push(own);\n    else if (free && n.kind === JELLY && n.placed) {\n      cells.push({ r, c, n, cost: 1, now: effectsOf(n.kind) });\n      continue;\n    }\n    for (const e of effectsOf(n.kind)) fixed.push(e);\n  }\n\n  // Try leaving each cell, Cocoa Beans or Nether Wart (3^cells ways, at most 81).\n  const affordable = inventory.get(JELLY) - jellybeansOwed();\n  let best = null;\n  const ways = Math.pow(3, cells.length);\n  for (let w = 0; w < ways; w++) {\n    let m = w, effects = fixed.slice(), broken = 0, crops = 0, starved = 0, shared = 0, grown = 0;\n    const pick = [];\n    for (const cell of cells) {\n      const choice = m % 3;\n      m = Math.floor(m / 3);\n      pick.push(choice);\n      if (choice === 0) {\n        for (const e of cell.now) effects.push(e);\n        continue;\n      }\n      for (const e of effectsOf(CROPS[choice - 1])) effects.push(e);\n      crops++;\n      broken += cell.cost;\n      // At a step end the spawners are cleared next session anyway.\n      if (cell.cost && !ctx.stepEnding) starved += starvedSpawners(cell.r, cell.c, ctx);\n      shared += neighbouringTargets(cell.r, cell.c, ctx);\n      grown += grownSpawners(cell.r, cell.c, ctx);\n    }\n    if (broken > affordable) continue;\n    const score = [-yieldBonus(effects), starved, broken, crops, -shared, -grown];\n    if (!best || before(score, best.score)) best = { score, pick };\n  }\n\n  for (const own of ours) if (!own.clients.includes(j.id)) own.clients.push(j.id);\n  if (!best || best.score[3] === 0) return;\n\n  for (let i = 0; i < cells.length; i++) {\n    if (best.pick[i] === 0) continue;\n    const cell = cells[i];\n    if (cell.n) cell.n.break();\n    if (!plot.place(CROPS[best.pick[i] - 1], cell.r, cell.c)) {\n      if (cell.n) plot.place(JELLY, cell.r, cell.c);\n      continue;\n    }\n    const crop = plot.at(cell.r, cell.c);\n    crop.waterIt(); // a dry crop gives no buffs\n    carriers[cellKey(cell.r, cell.c)] = {\n      row: cell.r, col: cell.c, plantId: crop.id, wasJelly: cell.cost === 1, clients: [j.id],\n    };\n    stats.cropsPlanted++;\n  }\n  if (!buffed[j.id]) {\n    buffed[j.id] = true;\n    stats.jellybeansBuffed++;\n  }\n}\n\nfunction restoreJellybean(cr, ctx) {\n  if (!cr.wasJelly || !ctx.layoutJelly[cellKey(cr.row, cr.col)]) return;\n  if (!plot.isEmpty(cr.row, cr.col)) return;\n  if (plot.place(JELLY, cr.row, cr.col)) stats.jellybeansSpent++;\n}\n\nfunction jellybeansOwed() {\n  let n = 0;\n  for (const k of keys(carriers)) if (carriers[k].wasJelly) n++;\n  return n;\n}\n\n// Spawn targets around (r, c) that are still empty: breaking a Jellybean here takes\n// away one of their requirements until it is put back.\nfunction starvedSpawners(r, c, ctx) {\n  return ctx.slots.filter((t) => !t.filled && inRing(t, r, c)).length;\n}\n\n// Targets around (r, c) that have already spawned (e.g. a growing Aloe).\nfunction grownSpawners(r, c, ctx) {\n  return ctx.slots.filter((t) => t.filled && inRing(t, r, c)).length;\n}\n\n// Other Jellybeans being buffed that a crop at (r, c) would also reach.\nfunction neighbouringTargets(r, c, ctx) {\n  let n = 0;\n  for (const [dr, dc] of DIRS) if (ctx.targetAt[cellKey(r + dr, c + dc)]) n++;\n  return n;\n}\n\nfunction inRing(t, r, c) {\n  const inBlock = r >= t.row && r < t.row + t.size && c >= t.col && c < t.col + t.size;\n  return !inBlock && r >= t.row - 1 && r <= t.row + t.size && c >= t.col - 1 && c <= t.col + t.size;\n}\n\nfunction before(a, b) {\n  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] < b[i];\n  return false;\n}\n",
+        "enabled": true
+      }
+    },
+    {
+      "id": 2,
+      "flow": {
+        "steps": [
+          {
+            "id": "step-1",
+            "label": "Thundering",
+            "layout": {
+              "code": "PYyJCQAgDAMXKoGKDuAoarqFw2vrQ0kgR5MiTSiaRPPUPtGIvjVghiurRDW_m4nH8H-4PdiJbtEI5oW3Byw"
+            },
+            "exits": [
+              {
+                "when": [
+                  {
+                    "kind": "inventoryAtLeast",
+                    "item": "thunderling",
+                    "qty": 462
+                  }
+                ],
+                "to": "step-2"
+              }
+            ]
+          },
+          {
+            "id": "step-4",
+            "label": "Snooze",
+            "layout": {
+              "code": "S9Qp0SnVydIp0ynQMagxNNbJqkl3AsJEEJmWlpaSDCRS01Mc9fSSgTjFKVVPTw-EU9JTYCynJCBIBhFwdWlOaVjUAU0CmpcCNA8A"
+            },
+            "exits": [
+              {
+                "when": [
+                  {
+                    "kind": "inventoryAtLeast",
+                    "item": "snoozling",
+                    "qty": 63
+                  }
+                ],
+                "checkOnEntry": true
+              }
+            ]
+          },
+          {
+            "id": "step-2",
+            "label": "PBA",
+            "layout": {
+              "code": "LcoxDoAgDIXhC700EqPOaC8CRRFI3Nw4vNXaqf2_BrgRLuJChSBiwoIZQ3czbk1X39rWzkA5pxaJRGRfD9LxJPuR5F1J9Ec8mVdr6qyXeeH6Oxe2xlXb54Uf"
+            },
+            "exits": [
+              {
+                "when": [
+                  {
+                    "kind": "inventoryAtLeast",
+                    "item": "plantboy_advance",
+                    "qty": 720
+                  }
+                ]
+              }
+            ],
+            "fullClear": true
+          },
+          {
+            "id": "step-7",
+            "label": "Duskies",
+            "layout": {
+              "code": "LYo7DoAgEAUvtKEzseUoyPsQCzs7Du9CzGSayRxxRosreiDueOY7r1KkLqk00lxCqAtXajhBImbhQkQ-tpHNu0H7weD4mytKTtjvBw"
+            },
+            "exits": [
+              {
+                "when": [
+                  {
+                    "kind": "inventoryAtLeast",
+                    "item": "duskbloom",
+                    "qty": 2000
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "step-5",
+            "label": "Hybridize",
+            "layout": {
+              "code": "LYwxDgAwCAI_1JB06e5T4A_dfHwD1oF4p-Gs23s3SJHwsFRDSVNkaBSLcIqK9iHy_8kbNQr45Q8"
+            },
+            "exits": [
+              {
+                "when": [
+                  {
+                    "kind": "targetsFilled",
+                    "count": 0
+                  }
+                ]
+              }
+            ],
+            "fullClear": true
+          },
+          {
+            "id": "step-3",
+            "label": "Aloe",
+            "layout": {
+              "code": "NYzBCQAgDAMXkoN-_HeUFNzC4aVGUwgkORoxYu5YW0-F0gcdiluDoOu7mWuZS6Vzu7lHq_gP4AA"
+            },
+            "exits": [
+              {
+                "to": "step-1",
+                "when": [
+                  {
+                    "kind": "inventoryBelow",
+                    "item": "plantboy_advance",
+                    "qty": 20
+                  }
+                ]
+              },
+              {
+                "when": [
+                  {
+                    "kind": "plantDecayed",
+                    "kindId": "plantboy_advance"
+                  }
+                ],
+                "match": "any",
+                "to": "step-5"
+              }
+            ]
+          }
+        ],
+        "loop": false,
+        "startIndex": 0
+      },
+      "script": {
+        "source": "// Magic Jellybean buffing (plot script)\n//\n// Just before a spawned Magic Jellybean is harvested, this swaps the placed Jellybeans\n// next to it for Cocoa Beans (Immunity) and Nether Wart (Improved Harvest Boost, +30%),\n// so the Jellybean is harvested with the best yield its neighbours allow. A Jellybean\n// is about to be harvested when it will be fully grown by the next session (it locks\n// its buffs at stage 120 and this script harvests it at that session) or when the\n// step is about to end (the step change harvests every growing Jellybean). Once the\n// Jellybean is gone the crops are broken and the Jellybeans re-placed, which takes\n// 1 Magic Jellybean from the inventory each.\n//\n// Each Jellybean is buffed on its own. For each one the script tries every way of\n// putting Cocoa Beans or Nether Wart on the cells around it and keeps the one with\n// the highest yield; ties go to the choice that starves the fewest empty spawn\n// targets (e.g. a Jellybean whose Aloe has already spawned), then to empty cells\n// over placed Jellybeans, then to fewer crops.\n\n// Cycles between your sessions (Player -> Online every N). The script measures it after\n// the second session; this is only the first guess.\nconst ONLINE_EVERY = 1;\n\n// When a placed plant of one of these kinds is about to decay before the next session,\n// the step is about to end (your Aloe step exits on \"PlantBoy Advance decayed\" and the\n// Hybridize full clear harvests every Jellybean), so every growing Jellybean gets\n// buffed first. Set it to [] to only buff Jellybeans that are about to be fully grown.\nconst STEP_ENDS_WHEN_DECAYS = [\"plantboy_advance\"];\n\n// A placed plant whose timer runs out only decays once the mutations around it are\n// used up (otherwise the game adds a day). The last few can spawn in the same tick,\n// so the step end is still expected with up to this many mutations left. Lower means\n// fewer Jellybeans spent on false alarms, higher means fewer missed step ends.\nconst MUTATIONS_SLACK = 2;\n\n// Harvest spawned Jellybeans as soon as they are fully grown. They sit on layout input\n// cells, so the \"keep layout input spawns\" policy would otherwise leave them standing.\nconst HARVEST_FULLY_GROWN = true;\n\n// Allow empty cells (never spawn targets) next to a Jellybean to hold a buff crop.\nconst USE_EMPTY_CELLS = true;\n\nconst JELLY = \"magic_jellybean\";\nconst CROPS = [\"cocoa_beans\", \"nether_wart\"]; // Immunity, Improved Harvest Boost\nconst DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];\n\n// Buff crops this script planted, by cell: { row, col, plantId, wasJelly, clients }\nlet carriers = {};\nlet lastSession = null;\nlet gap = ONLINE_EVERY;\nlet buffed = {};\nlet stats = { jellybeansBuffed: 0, cropsPlanted: 0, jellybeansSpent: 0 };\nlet effectsByKind = {};\n\nconst cellKey = (r, c) => r + \",\" + c;\nconst onPlot = (r, c) => r >= 0 && r < 10 && c >= 0 && c < 10;\n\n// Positive and negative effects a kind gives its neighbours.\nfunction effectsOf(kind) {\n  if (effectsByKind[kind] === undefined) {\n    const i = info(kind);\n    effectsByKind[kind] = i ? i.effects.concat(i.negativeEffects) : [];\n  }\n  return effectsByKind[kind];\n}\n\n// What the held effects add to the harvest multiplier.\nfunction yieldBonus(effects) {\n  const has = (e) => effects.includes(e);\n  let v = has(\"improved_harvest_boost\") ? 0.3 : has(\"harvest_boost\") ? 0.2 : 0;\n  if (has(\"harvest_loss\") && !has(\"immunity\")) v -= 0.2;\n  return v;\n}\n\nfunction onSession() {\n  if (lastSession !== null) gap = Math.max(1, cycle - lastSession);\n  lastSession = cycle;\n  if (!HARVEST_FULLY_GROWN) return;\n  // Before the built-in phases, so the layout re-places the Jellybean this session.\n  for (const p of plot.spawns(JELLY)) {\n    if (p.fullyGrown && p.harvestable) p.harvest();\n  }\n}\n\nfunction afterSession() {\n  const ctx = context(gap);\n\n  // Remove crops whose Jellybeans no longer need them.\n  const kept = {};\n  for (const k of keys(carriers)) {\n    const cr = carriers[k];\n    const here = plot.at(cr.row, cr.col);\n    const alive = !!here && here.id === cr.plantId;\n    cr.clients = cr.clients.filter((id) => ctx.want[id]);\n    if (alive && cr.clients.length > 0) {\n      kept[k] = cr;\n      continue;\n    }\n    if (alive) here.break();\n    restoreJellybean(cr, ctx);\n  }\n  carriers = kept;\n\n  for (const j of ctx.targets) buffJellybean(j, ctx);\n\n  metric(\"jellybeans buffed\", stats.jellybeansBuffed);\n  metric(\"buff crops planted\", stats.cropsPlanted);\n  metric(\"jellybeans spent on buffs\", stats.jellybeansSpent);\n}\n\n// Which Jellybeans get harvested before the next session, plus the plot lookups the\n// cell picking needs.\nfunction context(look) {\n  let stepEnding = false;\n  for (const kind of STEP_ENDS_WHEN_DECAYS) {\n    if (decaysWithin(kind, look)) stepEnding = true;\n  }\n  const targets = plot.spawns(JELLY).filter((p) =>\n    !p.fullyGrown &&\n    (p.stage + look >= p.readyStage || (stepEnding && p.stage + look >= 12)));\n\n  const want = {}, targetAt = {}, slotCells = {}, layoutJelly = {};\n  for (const j of targets) {\n    want[j.id] = true;\n    targetAt[cellKey(j.row, j.col)] = true;\n  }\n  const slots = plot.targets;\n  for (const t of slots) {\n    for (let dr = 0; dr < t.size; dr++)\n      for (let dc = 0; dc < t.size; dc++) slotCells[cellKey(t.row + dr, t.col + dc)] = true;\n  }\n  for (const p of plot.layout.plants) {\n    if (p.kind === JELLY) layoutJelly[cellKey(p.row, p.col)] = true;\n  }\n  return { targets, want, targetAt, slots, slotCells, layoutJelly, stepEnding };\n}\n\n// Will a plant of this kind decay before the next session? Its timer has to run out\n// and its mutations be used up (mutated plants of one kind share that count), give or\n// take MUTATIONS_SLACK.\nfunction decaysWithin(kind, look) {\n  const plants = plot.all(kind).filter((p) => !p.dead && p.decayCycles !== null);\n  let pooled = 0;\n  for (const p of plants) {\n    if (p.timesMutated >= 1 && typeof p.mutatesRemaining === \"number\") pooled += p.mutatesRemaining;\n  }\n  return plants.some((p) => {\n    if (p.decayCycles > look) return false;\n    const left = p.mutatesRemaining;\n    if (left === null) return true;\n    if (typeof left !== \"number\") return false; // never decays\n    return (p.timesMutated >= 1 ? pooled : left) <= MUTATIONS_SLACK;\n  });\n}\n\nfunction buffJellybean(j, ctx) {\n  const fixed = [];   // effects from neighbours that stay as they are\n  const cells = [];   // cells a crop may go on\n  const ours = [];    // our crops already next to it\n  for (const [dr, dc] of DIRS) {\n    const r = j.row + dr, c = j.col + dc;\n    if (!onPlot(r, c)) continue;\n    const n = plot.at(r, c);\n    const free = !ctx.slotCells[cellKey(r, c)];\n    if (!n) {\n      if (free && USE_EMPTY_CELLS) cells.push({ r, c, n: null, cost: 0, now: [] });\n      continue;\n    }\n    if (n.dead) continue;\n    const own = carriers[cellKey(r, c)];\n    if (own && own.plantId === n.id) ours.push(own);\n    else if (free && n.kind === JELLY && n.placed) {\n      cells.push({ r, c, n, cost: 1, now: effectsOf(n.kind) });\n      continue;\n    }\n    for (const e of effectsOf(n.kind)) fixed.push(e);\n  }\n\n  // Try leaving each cell, Cocoa Beans or Nether Wart (3^cells ways, at most 81).\n  const affordable = inventory.get(JELLY) - jellybeansOwed();\n  let best = null;\n  const ways = Math.pow(3, cells.length);\n  for (let w = 0; w < ways; w++) {\n    let m = w, effects = fixed.slice(), broken = 0, crops = 0, starved = 0, shared = 0, grown = 0;\n    const pick = [];\n    for (const cell of cells) {\n      const choice = m % 3;\n      m = Math.floor(m / 3);\n      pick.push(choice);\n      if (choice === 0) {\n        for (const e of cell.now) effects.push(e);\n        continue;\n      }\n      for (const e of effectsOf(CROPS[choice - 1])) effects.push(e);\n      crops++;\n      broken += cell.cost;\n      // At a step end the spawners are cleared next session anyway.\n      if (cell.cost && !ctx.stepEnding) starved += starvedSpawners(cell.r, cell.c, ctx);\n      shared += neighbouringTargets(cell.r, cell.c, ctx);\n      grown += grownSpawners(cell.r, cell.c, ctx);\n    }\n    if (broken > affordable) continue;\n    const score = [-yieldBonus(effects), starved, broken, crops, -shared, -grown];\n    if (!best || before(score, best.score)) best = { score, pick };\n  }\n\n  for (const own of ours) if (!own.clients.includes(j.id)) own.clients.push(j.id);\n  if (!best || best.score[3] === 0) return;\n\n  for (let i = 0; i < cells.length; i++) {\n    if (best.pick[i] === 0) continue;\n    const cell = cells[i];\n    if (cell.n) cell.n.break();\n    if (!plot.place(CROPS[best.pick[i] - 1], cell.r, cell.c)) {\n      if (cell.n) plot.place(JELLY, cell.r, cell.c);\n      continue;\n    }\n    const crop = plot.at(cell.r, cell.c);\n    crop.waterIt(); // a dry crop gives no buffs\n    carriers[cellKey(cell.r, cell.c)] = {\n      row: cell.r, col: cell.c, plantId: crop.id, wasJelly: cell.cost === 1, clients: [j.id],\n    };\n    stats.cropsPlanted++;\n  }\n  if (!buffed[j.id]) {\n    buffed[j.id] = true;\n    stats.jellybeansBuffed++;\n  }\n}\n\nfunction restoreJellybean(cr, ctx) {\n  if (!cr.wasJelly || !ctx.layoutJelly[cellKey(cr.row, cr.col)]) return;\n  if (!plot.isEmpty(cr.row, cr.col)) return;\n  if (plot.place(JELLY, cr.row, cr.col)) stats.jellybeansSpent++;\n}\n\nfunction jellybeansOwed() {\n  let n = 0;\n  for (const k of keys(carriers)) if (carriers[k].wasJelly) n++;\n  return n;\n}\n\n// Spawn targets around (r, c) that are still empty: breaking a Jellybean here takes\n// away one of their requirements until it is put back.\nfunction starvedSpawners(r, c, ctx) {\n  return ctx.slots.filter((t) => !t.filled && inRing(t, r, c)).length;\n}\n\n// Targets around (r, c) that have already spawned (e.g. a growing Aloe).\nfunction grownSpawners(r, c, ctx) {\n  return ctx.slots.filter((t) => t.filled && inRing(t, r, c)).length;\n}\n\n// Other Jellybeans being buffed that a crop at (r, c) would also reach.\nfunction neighbouringTargets(r, c, ctx) {\n  let n = 0;\n  for (const [dr, dc] of DIRS) if (ctx.targetAt[cellKey(r + dr, c + dc)]) n++;\n  return n;\n}\n\nfunction inRing(t, r, c) {\n  const inBlock = r >= t.row && r < t.row + t.size && c >= t.col && c < t.col + t.size;\n  return !inBlock && r >= t.row - 1 && r <= t.row + t.size && c >= t.col - 1 && c <= t.col + t.size;\n}\n\nfunction before(a, b) {\n  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] < b[i];\n  return false;\n}\n",
+        "enabled": true
+      }
+    },
+    {
+      "id": 3,
+      "flow": {
+        "steps": [
+          {
+            "id": "step-1",
+            "label": "Thundering",
+            "layout": {
+              "code": "PYyJCQAgDAMXKoGKDuAoarqFw2vrQ0kgR5MiTSiaRPPUPtGIvjVghiurRDW_m4nH8H-4PdiJbtEI5oW3Byw"
+            },
+            "exits": [
+              {
+                "when": [
+                  {
+                    "kind": "inventoryAtLeast",
+                    "item": "thunderling",
+                    "qty": 462
+                  }
+                ],
+                "to": "step-2"
+              }
+            ]
+          },
+          {
+            "id": "step-4",
+            "label": "Snooze",
+            "layout": {
+              "code": "S9Qp0SnVydIp0ynQMagxNNbJqkl3AsJEEJmWlpaSDCRS01Mc9fSSgTjFKVVPTw-EU9JTYCynJCBIBhFwdWlOaVjUAU0CmpcCNA8A"
+            },
+            "exits": [
+              {
+                "when": [
+                  {
+                    "kind": "inventoryAtLeast",
+                    "item": "snoozling",
+                    "qty": 63
+                  }
+                ],
+                "checkOnEntry": true
+              }
+            ]
+          },
+          {
+            "id": "step-2",
+            "label": "PBA",
+            "layout": {
+              "code": "LcoxDoAgDIXhC700EqPOaC8CRRFI3Nw4vNXaqf2_BrgRLuJChSBiwoIZQ3czbk1X39rWzkA5pxaJRGRfD9LxJPuR5F1J9Ec8mVdr6qyXeeH6Oxe2xlXb54Uf"
+            },
+            "exits": [
+              {
+                "when": [
+                  {
+                    "kind": "inventoryAtLeast",
+                    "item": "plantboy_advance",
+                    "qty": 720
+                  }
+                ]
+              }
+            ],
+            "fullClear": true
+          },
+          {
+            "id": "step-7",
+            "label": "Duskies",
+            "layout": {
+              "code": "LYo7DoAgEAUvtKEzseUoyPsQCzs7Du9CzGSayRxxRosreiDueOY7r1KkLqk00lxCqAtXajhBImbhQkQ-tpHNu0H7weD4mytKTtjvBw"
+            },
+            "exits": [
+              {
+                "when": [
+                  {
+                    "kind": "inventoryAtLeast",
+                    "item": "duskbloom",
+                    "qty": 2000
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "step-5",
+            "label": "Hybridize",
+            "layout": {
+              "code": "LYwxDgAwCAI_1JB06e5T4A_dfHwD1oF4p-Gs23s3SJHwsFRDSVNkaBSLcIqK9iHy_8kbNQr45Q8"
+            },
+            "exits": [
+              {
+                "when": [
+                  {
+                    "kind": "targetsFilled",
+                    "count": 0
+                  }
+                ]
+              }
+            ],
+            "fullClear": true
+          },
+          {
+            "id": "step-3",
+            "label": "Aloe",
+            "layout": {
+              "code": "NYzBCQAgDAMXkoN-_HeUFNzC4aVGUwgkORoxYu5YW0-F0gcdiluDoOu7mWuZS6Vzu7lHq_gP4AA"
+            },
+            "exits": [
+              {
+                "to": "step-4",
+                "when": [
+                  {
+                    "kind": "inventoryBelow",
+                    "item": "plantboy_advance",
+                    "qty": 20
+                  }
+                ]
+              },
+              {
+                "when": [
+                  {
+                    "kind": "plantDecayed",
+                    "kindId": "plantboy_advance"
+                  }
+                ],
+                "match": "any",
+                "to": "step-5"
+              }
+            ]
+          }
+        ],
+        "loop": false,
+        "startIndex": 1
+      },
+      "script": {
+        "source": "// Magic Jellybean buffing (plot script)\n//\n// Just before a spawned Magic Jellybean is harvested, this swaps the placed Jellybeans\n// next to it for Cocoa Beans (Immunity) and Nether Wart (Improved Harvest Boost, +30%),\n// so the Jellybean is harvested with the best yield its neighbours allow. A Jellybean\n// is about to be harvested when it will be fully grown by the next session (it locks\n// its buffs at stage 120 and this script harvests it at that session) or when the\n// step is about to end (the step change harvests every growing Jellybean). Once the\n// Jellybean is gone the crops are broken and the Jellybeans re-placed, which takes\n// 1 Magic Jellybean from the inventory each.\n//\n// Each Jellybean is buffed on its own. For each one the script tries every way of\n// putting Cocoa Beans or Nether Wart on the cells around it and keeps the one with\n// the highest yield; ties go to the choice that starves the fewest empty spawn\n// targets (e.g. a Jellybean whose Aloe has already spawned), then to empty cells\n// over placed Jellybeans, then to fewer crops.\n\n// Cycles between your sessions (Player -> Online every N). The script measures it after\n// the second session; this is only the first guess.\nconst ONLINE_EVERY = 1;\n\n// When a placed plant of one of these kinds is about to decay before the next session,\n// the step is about to end (your Aloe step exits on \"PlantBoy Advance decayed\" and the\n// Hybridize full clear harvests every Jellybean), so every growing Jellybean gets\n// buffed first. Set it to [] to only buff Jellybeans that are about to be fully grown.\nconst STEP_ENDS_WHEN_DECAYS = [\"plantboy_advance\"];\n\n// A placed plant whose timer runs out only decays once the mutations around it are\n// used up (otherwise the game adds a day). The last few can spawn in the same tick,\n// so the step end is still expected with up to this many mutations left. Lower means\n// fewer Jellybeans spent on false alarms, higher means fewer missed step ends.\nconst MUTATIONS_SLACK = 2;\n\n// Harvest spawned Jellybeans as soon as they are fully grown. They sit on layout input\n// cells, so the \"keep layout input spawns\" policy would otherwise leave them standing.\nconst HARVEST_FULLY_GROWN = true;\n\n// Allow empty cells (never spawn targets) next to a Jellybean to hold a buff crop.\nconst USE_EMPTY_CELLS = true;\n\nconst JELLY = \"magic_jellybean\";\nconst CROPS = [\"cocoa_beans\", \"nether_wart\"]; // Immunity, Improved Harvest Boost\nconst DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];\n\n// Buff crops this script planted, by cell: { row, col, plantId, wasJelly, clients }\nlet carriers = {};\nlet lastSession = null;\nlet gap = ONLINE_EVERY;\nlet buffed = {};\nlet stats = { jellybeansBuffed: 0, cropsPlanted: 0, jellybeansSpent: 0 };\nlet effectsByKind = {};\n\nconst cellKey = (r, c) => r + \",\" + c;\nconst onPlot = (r, c) => r >= 0 && r < 10 && c >= 0 && c < 10;\n\n// Positive and negative effects a kind gives its neighbours.\nfunction effectsOf(kind) {\n  if (effectsByKind[kind] === undefined) {\n    const i = info(kind);\n    effectsByKind[kind] = i ? i.effects.concat(i.negativeEffects) : [];\n  }\n  return effectsByKind[kind];\n}\n\n// What the held effects add to the harvest multiplier.\nfunction yieldBonus(effects) {\n  const has = (e) => effects.includes(e);\n  let v = has(\"improved_harvest_boost\") ? 0.3 : has(\"harvest_boost\") ? 0.2 : 0;\n  if (has(\"harvest_loss\") && !has(\"immunity\")) v -= 0.2;\n  return v;\n}\n\nfunction onSession() {\n  if (lastSession !== null) gap = Math.max(1, cycle - lastSession);\n  lastSession = cycle;\n  if (!HARVEST_FULLY_GROWN) return;\n  // Before the built-in phases, so the layout re-places the Jellybean this session.\n  for (const p of plot.spawns(JELLY)) {\n    if (p.fullyGrown && p.harvestable) p.harvest();\n  }\n}\n\nfunction afterSession() {\n  const ctx = context(gap);\n\n  // Remove crops whose Jellybeans no longer need them.\n  const kept = {};\n  for (const k of keys(carriers)) {\n    const cr = carriers[k];\n    const here = plot.at(cr.row, cr.col);\n    const alive = !!here && here.id === cr.plantId;\n    cr.clients = cr.clients.filter((id) => ctx.want[id]);\n    if (alive && cr.clients.length > 0) {\n      kept[k] = cr;\n      continue;\n    }\n    if (alive) here.break();\n    restoreJellybean(cr, ctx);\n  }\n  carriers = kept;\n\n  for (const j of ctx.targets) buffJellybean(j, ctx);\n\n  metric(\"jellybeans buffed\", stats.jellybeansBuffed);\n  metric(\"buff crops planted\", stats.cropsPlanted);\n  metric(\"jellybeans spent on buffs\", stats.jellybeansSpent);\n}\n\n// Which Jellybeans get harvested before the next session, plus the plot lookups the\n// cell picking needs.\nfunction context(look) {\n  let stepEnding = false;\n  for (const kind of STEP_ENDS_WHEN_DECAYS) {\n    if (decaysWithin(kind, look)) stepEnding = true;\n  }\n  const targets = plot.spawns(JELLY).filter((p) =>\n    !p.fullyGrown &&\n    (p.stage + look >= p.readyStage || (stepEnding && p.stage + look >= 12)));\n\n  const want = {}, targetAt = {}, slotCells = {}, layoutJelly = {};\n  for (const j of targets) {\n    want[j.id] = true;\n    targetAt[cellKey(j.row, j.col)] = true;\n  }\n  const slots = plot.targets;\n  for (const t of slots) {\n    for (let dr = 0; dr < t.size; dr++)\n      for (let dc = 0; dc < t.size; dc++) slotCells[cellKey(t.row + dr, t.col + dc)] = true;\n  }\n  for (const p of plot.layout.plants) {\n    if (p.kind === JELLY) layoutJelly[cellKey(p.row, p.col)] = true;\n  }\n  return { targets, want, targetAt, slots, slotCells, layoutJelly, stepEnding };\n}\n\n// Will a plant of this kind decay before the next session? Its timer has to run out\n// and its mutations be used up (mutated plants of one kind share that count), give or\n// take MUTATIONS_SLACK.\nfunction decaysWithin(kind, look) {\n  const plants = plot.all(kind).filter((p) => !p.dead && p.decayCycles !== null);\n  let pooled = 0;\n  for (const p of plants) {\n    if (p.timesMutated >= 1 && typeof p.mutatesRemaining === \"number\") pooled += p.mutatesRemaining;\n  }\n  return plants.some((p) => {\n    if (p.decayCycles > look) return false;\n    const left = p.mutatesRemaining;\n    if (left === null) return true;\n    if (typeof left !== \"number\") return false; // never decays\n    return (p.timesMutated >= 1 ? pooled : left) <= MUTATIONS_SLACK;\n  });\n}\n\nfunction buffJellybean(j, ctx) {\n  const fixed = [];   // effects from neighbours that stay as they are\n  const cells = [];   // cells a crop may go on\n  const ours = [];    // our crops already next to it\n  for (const [dr, dc] of DIRS) {\n    const r = j.row + dr, c = j.col + dc;\n    if (!onPlot(r, c)) continue;\n    const n = plot.at(r, c);\n    const free = !ctx.slotCells[cellKey(r, c)];\n    if (!n) {\n      if (free && USE_EMPTY_CELLS) cells.push({ r, c, n: null, cost: 0, now: [] });\n      continue;\n    }\n    if (n.dead) continue;\n    const own = carriers[cellKey(r, c)];\n    if (own && own.plantId === n.id) ours.push(own);\n    else if (free && n.kind === JELLY && n.placed) {\n      cells.push({ r, c, n, cost: 1, now: effectsOf(n.kind) });\n      continue;\n    }\n    for (const e of effectsOf(n.kind)) fixed.push(e);\n  }\n\n  // Try leaving each cell, Cocoa Beans or Nether Wart (3^cells ways, at most 81).\n  const affordable = inventory.get(JELLY) - jellybeansOwed();\n  let best = null;\n  const ways = Math.pow(3, cells.length);\n  for (let w = 0; w < ways; w++) {\n    let m = w, effects = fixed.slice(), broken = 0, crops = 0, starved = 0, shared = 0, grown = 0;\n    const pick = [];\n    for (const cell of cells) {\n      const choice = m % 3;\n      m = Math.floor(m / 3);\n      pick.push(choice);\n      if (choice === 0) {\n        for (const e of cell.now) effects.push(e);\n        continue;\n      }\n      for (const e of effectsOf(CROPS[choice - 1])) effects.push(e);\n      crops++;\n      broken += cell.cost;\n      // At a step end the spawners are cleared next session anyway.\n      if (cell.cost && !ctx.stepEnding) starved += starvedSpawners(cell.r, cell.c, ctx);\n      shared += neighbouringTargets(cell.r, cell.c, ctx);\n      grown += grownSpawners(cell.r, cell.c, ctx);\n    }\n    if (broken > affordable) continue;\n    const score = [-yieldBonus(effects), starved, broken, crops, -shared, -grown];\n    if (!best || before(score, best.score)) best = { score, pick };\n  }\n\n  for (const own of ours) if (!own.clients.includes(j.id)) own.clients.push(j.id);\n  if (!best || best.score[3] === 0) return;\n\n  for (let i = 0; i < cells.length; i++) {\n    if (best.pick[i] === 0) continue;\n    const cell = cells[i];\n    if (cell.n) cell.n.break();\n    if (!plot.place(CROPS[best.pick[i] - 1], cell.r, cell.c)) {\n      if (cell.n) plot.place(JELLY, cell.r, cell.c);\n      continue;\n    }\n    const crop = plot.at(cell.r, cell.c);\n    crop.waterIt(); // a dry crop gives no buffs\n    carriers[cellKey(cell.r, cell.c)] = {\n      row: cell.r, col: cell.c, plantId: crop.id, wasJelly: cell.cost === 1, clients: [j.id],\n    };\n    stats.cropsPlanted++;\n  }\n  if (!buffed[j.id]) {\n    buffed[j.id] = true;\n    stats.jellybeansBuffed++;\n  }\n}\n\nfunction restoreJellybean(cr, ctx) {\n  if (!cr.wasJelly || !ctx.layoutJelly[cellKey(cr.row, cr.col)]) return;\n  if (!plot.isEmpty(cr.row, cr.col)) return;\n  if (plot.place(JELLY, cr.row, cr.col)) stats.jellybeansSpent++;\n}\n\nfunction jellybeansOwed() {\n  let n = 0;\n  for (const k of keys(carriers)) if (carriers[k].wasJelly) n++;\n  return n;\n}\n\n// Spawn targets around (r, c) that are still empty: breaking a Jellybean here takes\n// away one of their requirements until it is put back.\nfunction starvedSpawners(r, c, ctx) {\n  return ctx.slots.filter((t) => !t.filled && inRing(t, r, c)).length;\n}\n\n// Targets around (r, c) that have already spawned (e.g. a growing Aloe).\nfunction grownSpawners(r, c, ctx) {\n  return ctx.slots.filter((t) => t.filled && inRing(t, r, c)).length;\n}\n\n// Other Jellybeans being buffed that a crop at (r, c) would also reach.\nfunction neighbouringTargets(r, c, ctx) {\n  let n = 0;\n  for (const [dr, dc] of DIRS) if (ctx.targetAt[cellKey(r + dr, c + dc)]) n++;\n  return n;\n}\n\nfunction inRing(t, r, c) {\n  const inBlock = r >= t.row && r < t.row + t.size && c >= t.col && c < t.col + t.size;\n  return !inBlock && r >= t.row - 1 && r <= t.row + t.size && c >= t.col - 1 && c <= t.col + t.size;\n}\n\nfunction before(a, b) {\n  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] < b[i];\n  return false;\n}\n",
+        "enabled": true
+      }
+    }
+  ]
+}

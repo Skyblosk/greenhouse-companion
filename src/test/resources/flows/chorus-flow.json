@@ -1,0 +1,39 @@
+{
+  "kind": "skyshards-greenhouse-flows",
+  "version": 2,
+  "plots": [
+    {
+      "id": 1,
+      "flow": {
+        "steps": [
+          {
+            "id": "step-1",
+            "label": "Chorus Fruit x9 - Plot C",
+            "layout": {
+              "code": "TYjBCcAwDMQWCgd-dICMcvIG_QUyfDAxpToOhNaIGO-OZ4MBS2K6ppRt3I1uVPwas8yXTCl1_7cmdQA"
+            },
+            "exits": []
+          }
+        ],
+        "loop": false,
+        "startIndex": 0
+      },
+      "script": {
+        "source": "const ONLINE_EVERY = 5;\n\nfunction afterSession() {\n  for (const p of plot.all(\"chloronite\")) {\n    if (p.dead || p.decayCycles === null) continue;\n    if (p.decayCycles < ONLINE_EVERY) {\n      const r = p.row, c = p.col;\n      p.break();\n      plot.place(\"chloronite\", r, c);\n    }\n  }\n}\n",
+        "enabled": true
+      }
+    }
+  ],
+  "startingInventory": {
+    "chloronite": 10000,
+    "magic_jellybean": 10000,
+    "cindershade": 10000
+  },
+  "settings": {
+    "activity": {
+      "kind": "everyN",
+      "n": 5,
+      "offset": 0
+    }
+  }
+}

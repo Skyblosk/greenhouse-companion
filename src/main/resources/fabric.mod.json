@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "greenhouse-companion",
+  "version": "${version}",
+  "name": "Greenhouse Companion",
+  "description": "Follows SkyShards greenhouse simulator flows in Hypixel SkyBlock: identifies each greenhouse, shows the current layout in the greenhouse with red boxes where something needs doing, tracks plant stages from their looks, alerts you to swap, and shows and protects Magic Jellybeans.",
+  "authors": [
+    "ilyapple"
+  ],
+  "license": "GPL-3.0-only",
+  "environment": "client",
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "fabric-api": ">=0.155.2+26.1.2",
+    "minecraft": "~26.1.2",
+    "java": ">=25"
+  },
+  "entrypoints": {
+    "client": [
+      "dev.ilyapple.ghc.mod.GreenhouseCompanion"
+    ]
+  },
+  "accessWidener": "greenhouse-companion.accesswidener",
+  "mixins": [
+    "greenhouse-companion.mixins.json"
+  ],
+  "suggests": {
+    "hypixel-mod-api": "*",
+    "greenhouse-stage-recorder": "*"
+  },
+  "breaks": {
+    "greenhouse-flow": "*"
+  }
+}

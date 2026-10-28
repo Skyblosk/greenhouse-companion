@@ -1,0 +1,1612 @@
+{
+  "crops": {
+    "wheat": {
+      "name": "Wheat",
+      "size": 1,
+      "ground": "farmland",
+      "growth_stages": 8,
+      "decay": 3,
+      "minimum_mutations": 12,
+      "positive_buffs": [
+        "harvest_boost"
+      ],
+      "negative_buffs": [],
+      "drops": {
+        "wheat": 72,
+        "seeds": 1
+      },
+      "sell_price": 6
+    },
+    "potato": {
+      "name": "Potato",
+      "size": 1,
+      "ground": "farmland",
+      "growth_stages": 8,
+      "decay": 3,
+      "minimum_mutations": 12,
+      "positive_buffs": [
+        "immunity"
+      ],
+      "negative_buffs": [],
+      "drops": {
+        "potato": 150
+      },
+      "sell_price": 3
+    },
+    "carrot": {
+      "name": "Carrot",
+      "size": 1,
+      "ground": "farmland",
+      "growth_stages": 8,
+      "decay": 3,
+      "minimum_mutations": 12,
+      "positive_buffs": [
+        "xp_boost"
+      ],
+      "negative_buffs": [],
+      "drops": {
+        "carrot": 175
+      },
+      "sell_price": 3
+    },
+    "pumpkin": {
+      "name": "Pumpkin",
+      "size": 1,
+      "ground": "farmland",
+      "growth_stages": 11,
+      "decay": 3,
+      "minimum_mutations": 12,
+      "positive_buffs": [
+        "bonus_drops"
+      ],
+      "negative_buffs": [],
+      "drops": {
+        "pumpkin": 68
+      },
+      "sell_price": 10
+    },
+    "melon": {
+      "name": "Melon",
+      "size": 1,
+      "ground": "farmland",
+      "growth_stages": 11,
+      "decay": 3,
+      "minimum_mutations": 12,
+      "positive_buffs": [
+        "water_retain"
+      ],
+      "negative_buffs": [],
+      "drops": {
+        "melon": 320
+      },
+      "sell_price": 2
+    },
+    "cocoa_beans": {
+      "name": "Cocoa Beans",
+      "size": 1,
+      "ground": "farmland",
+      "growth_stages": 6,
+      "decay": 3,
+      "minimum_mutations": 12,
+      "positive_buffs": [
+        "immunity"
+      ],
+      "negative_buffs": [],
+      "drops": {
+        "cocoa_beans": 120
+      },
+      "sell_price": 3
+    },
+    "sugar_cane": {
+      "name": "Sugar Cane",
+      "size": 1,
+      "ground": "sand",
+      "growth_stages": 8,
+      "decay": 3,
+      "minimum_mutations": 12,
+      "positive_buffs": [
+        "improved_xp_boost"
+      ],
+      "negative_buffs": [
+        "harvest_loss"
+      ],
+      "drops": {
+        "sugar_cane": 136
+      },
+      "sell_price": 4
+    },
+    "cactus": {
+      "name": "Cactus",
+      "size": 1,
+      "ground": "sand",
+      "growth_stages": 8,
+      "decay": 3,
+      "minimum_mutations": 12,
+      "positive_buffs": [
+        "improved_water_retain"
+      ],
+      "negative_buffs": [
+        "harvest_loss"
+      ],
+      "drops": {
+        "cactus": 132
+      },
+      "sell_price": 4
+    },
+    "nether_wart": {
+      "name": "Nether Wart",
+      "size": 1,
+      "ground": "soul_sand",
+      "growth_stages": 8,
+      "decay": 3,
+      "minimum_mutations": 12,
+      "positive_buffs": [
+        "improved_harvest_boost"
+      ],
+      "negative_buffs": [
+        "xp_loss"
+      ],
+      "drops": {
+        "nether_wart": 108
+      },
+      "sell_price": 4
+    },
+    "red_mushroom": {
+      "name": "Red Mushroom",
+      "size": 1,
+      "ground": "mycelium",
+      "growth_stages": 6,
+      "decay": 3,
+      "minimum_mutations": 12,
+      "positive_buffs": [
+        "improved_harvest_boost"
+      ],
+      "negative_buffs": [
+        "water_drain"
+      ],
+      "drops": {
+        "red_mushroom": 30
+      },
+      "sell_price": 10
+    },
+    "brown_mushroom": {
+      "name": "Brown Mushroom",
+      "size": 1,
+      "ground": "mycelium",
+      "growth_stages": 6,
+      "decay": 3,
+      "minimum_mutations": 12,
+      "positive_buffs": [
+        "improved_harvest_boost"
+      ],
+      "negative_buffs": [
+        "water_drain"
+      ],
+      "drops": {
+        "brown_mushroom": 30
+      },
+      "sell_price": 10
+    },
+    "moonflower": {
+      "name": "Moonflower",
+      "size": 1,
+      "ground": "farmland",
+      "growth_stages": 15,
+      "decay": 3,
+      "minimum_mutations": 12,
+      "positive_buffs": [
+        "bonus_drops"
+      ],
+      "negative_buffs": [],
+      "drops": {
+        "moonflower": 232
+      },
+      "sell_price": 4
+    },
+    "sunflower": {
+      "name": "Sunflower",
+      "size": 1,
+      "ground": "farmland",
+      "growth_stages": 15,
+      "decay": 3,
+      "minimum_mutations": 12,
+      "positive_buffs": [
+        "bonus_drops"
+      ],
+      "negative_buffs": [],
+      "drops": {
+        "sunflower": 232
+      },
+      "sell_price": 4
+    },
+    "wild_rose": {
+      "name": "Wild Rose",
+      "size": 1,
+      "ground": "farmland",
+      "growth_stages": 15,
+      "decay": 3,
+      "minimum_mutations": 12,
+      "positive_buffs": [
+        "effect_spread"
+      ],
+      "negative_buffs": [],
+      "drops": {
+        "wild_rose": 200
+      },
+      "sell_price": 4,
+      "notes": "Can only be planted at Garden Level 12."
+    },
+    "fire": {
+      "name": "Fire",
+      "size": 1,
+      "ground": "netherrack",
+      "growth_stages": null,
+      "decay": 0,
+      "minimum_mutations": null,
+      "positive_buffs": [],
+      "negative_buffs": [],
+      "drops": {},
+      "sell_price": 0
+    },
+    "dead_plant": {
+      "name": "Dead Plant",
+      "size": 1,
+      "ground": "farmland",
+      "growth_stages": null,
+      "decay": 3,
+      "minimum_mutations": 10,
+      "positive_buffs": [],
+      "negative_buffs": [],
+      "drops": {},
+      "sell_price": 0
+    },
+    "fermento": {
+      "name": "Fermento",
+      "size": 1,
+      "ground": "farmland",
+      "growth_stages": null,
+      "decay": 0,
+      "minimum_mutations": null,
+      "positive_buffs": [],
+      "negative_buffs": [],
+      "drops": {},
+      "sell_price": 0
+    }
+  },
+  "mutations": {
+    "ashwreath": {
+      "name": "Ashwreath",
+      "size": 1,
+      "ground": "soul_sand",
+      "requirements": [
+        {
+          "crop": "nether_wart",
+          "count": 2
+        },
+        {
+          "crop": "fire",
+          "count": 2
+        }
+      ],
+      "rarity": "common",
+      "growth_stages": 0,
+      "decay": 3,
+      "minimum_mutations": 10,
+      "positive_buffs": [
+        "improved_harvest_boost"
+      ],
+      "negative_buffs": [
+        "xp_loss"
+      ],
+      "requires_watering": false,
+      "drops": {
+        "nether_wart": 180
+      },
+      "spawn_weight": 30
+    },
+    "choconut": {
+      "name": "Choconut",
+      "size": 1,
+      "ground": "farmland",
+      "requirements": [
+        {
+          "crop": "cocoa_beans",
+          "count": 2
+        }
+      ],
+      "rarity": "common",
+      "growth_stages": 0,
+      "decay": 3,
+      "minimum_mutations": 10,
+      "positive_buffs": [
+        "immunity"
+      ],
+      "negative_buffs": [],
+      "requires_watering": false,
+      "drops": {
+        "cocoa_beans": 200
+      },
+      "spawn_weight": 30
+    },
+    "dustgrain": {
+      "name": "Dustgrain",
+      "size": 1,
+      "ground": "farmland",
+      "requirements": [
+        {
+          "crop": "wheat",
+          "count": 2
+        }
+      ],
+      "rarity": "common",
+      "growth_stages": 0,
+      "decay": 3,
+      "minimum_mutations": 10,
+      "positive_buffs": [
+        "harvest_boost"
+      ],
+      "negative_buffs": [],
+      "requires_watering": false,
+      "drops": {
+        "wheat": 100
+      },
+      "spawn_weight": 30
+    },
+    "gloomgourd": {
+      "name": "Gloomgourd",
+      "size": 1,
+      "ground": "farmland",
+      "requirements": [
+        {
+          "crop": "pumpkin",
+          "count": 1
+        },
+        {
+          "crop": "melon",
+          "count": 1
+        }
+      ],
+      "rarity": "common",
+      "growth_stages": 0,
+      "decay": 3,
+      "minimum_mutations": 10,
+      "positive_buffs": [
+        "bonus_drops",
+        "water_retain"
+      ],
+      "negative_buffs": [],
+      "requires_watering": false,
+      "drops": {
+        "pumpkin": 34,
+        "melon": 160
+      },
+      "spawn_weight": 30
+    },
+    "lonelily": {
+      "name": "Lonelily",
+      "size": 1,
+      "ground": "farmland",
+      "requirements": [],
+      "special": "requires_zero_adjacent",
+      "rarity": "common",
+      "growth_stages": 0,
+      "decay": 3,
+      "minimum_mutations": 10,
+      "positive_buffs": [
+        "bonus_drops"
+      ],
+      "negative_buffs": [],
+      "requires_watering": false,
+      "drops": {
+        "potato": 525,
+        "carrot": 613,
+        "pumpkin": 298
+      },
+      "spawn_weight": 6
+    },
+    "scourroot": {
+      "name": "Scourroot",
+      "size": 1,
+      "ground": "farmland",
+      "requirements": [
+        {
+          "crop": "potato",
+          "count": 1
+        },
+        {
+          "crop": "carrot",
+          "count": 1
+        }
+      ],
+      "rarity": "common",
+      "growth_stages": 0,
+      "decay": 3,
+      "minimum_mutations": 10,
+      "positive_buffs": [
+        "xp_boost",
+        "immunity"
+      ],
+      "negative_buffs": [],
+      "requires_watering": false,
+      "drops": {
+        "potato": 102,
+        "carrot": 119
+      },
+      "spawn_weight": 30
+    },
+    "shadevine": {
+      "name": "Shadevine",
+      "size": 1,
+      "ground": "farmland",
+      "requirements": [
+        {
+          "crop": "cactus",
+          "count": 1
+        },
+        {
+          "crop": "sugar_cane",
+          "count": 1
+        }
+      ],
+      "rarity": "common",
+      "growth_stages": 0,
+      "decay": 3,
+      "minimum_mutations": 10,
+      "positive_buffs": [
+        "improved_xp_boost",
+        "improved_water_retain"
+      ],
+      "negative_buffs": [
+        "harvest_loss"
+      ],
+      "requires_watering": false,
+      "drops": {
+        "cactus": 78,
+        "sugar_cane": 104
+      },
+      "spawn_weight": 30
+    },
+    "veilshroom": {
+      "name": "Veilshroom",
+      "size": 1,
+      "ground": "mycelium",
+      "requirements": [
+        {
+          "crop": "red_mushroom",
+          "count": 1
+        },
+        {
+          "crop": "brown_mushroom",
+          "count": 1
+        }
+      ],
+      "rarity": "common",
+      "growth_stages": 0,
+      "decay": 3,
+      "minimum_mutations": 10,
+      "positive_buffs": [
+        "improved_harvest_boost"
+      ],
+      "negative_buffs": [
+        "water_drain"
+      ],
+      "requires_watering": false,
+      "drops": {
+        "brown_mushroom": 28,
+        "red_mushroom": 28
+      },
+      "spawn_weight": 30
+    },
+    "witherbloom": {
+      "name": "Witherbloom",
+      "size": 1,
+      "ground": "soul_sand",
+      "requirements": [
+        {
+          "crop": "dead_plant",
+          "count": 4
+        }
+      ],
+      "rarity": "common",
+      "growth_stages": 0,
+      "decay": 3,
+      "minimum_mutations": 10,
+      "positive_buffs": [
+        "effect_spread"
+      ],
+      "negative_buffs": [],
+      "requires_watering": false,
+      "drops": {
+        "wild_rose": 184
+      },
+      "spawn_weight": 30
+    },
+    "chocoberry": {
+      "name": "Chocoberry",
+      "size": 1,
+      "ground": "farmland",
+      "requirements": [
+        {
+          "crop": "choconut",
+          "count": 6
+        },
+        {
+          "crop": "gloomgourd",
+          "count": 2
+        }
+      ],
+      "rarity": "uncommon",
+      "growth_stages": 6,
+      "decay": 3,
+      "minimum_mutations": 10,
+      "positive_buffs": [
+        "water_retain"
+      ],
+      "negative_buffs": [],
+      "requires_watering": true,
+      "drops": {
+        "cocoa_beans": 440,
+        "pumpkin": 187,
+        "melon": 1760
+      },
+      "spawn_weight": 25
+    },
+    "cindershade": {
+      "name": "Cindershade",
+      "size": 1,
+      "ground": "soul_sand",
+      "requirements": [
+        {
+          "crop": "ashwreath",
+          "count": 4
+        },
+        {
+          "crop": "witherbloom",
+          "count": 4
+        }
+      ],
+      "rarity": "uncommon",
+      "growth_stages": 8,
+      "decay": 3,
+      "minimum_mutations": 8,
+      "positive_buffs": [
+        "effect_spread",
+        "improved_harvest_boost"
+      ],
+      "negative_buffs": [
+        "xp_loss"
+      ],
+      "requires_watering": false,
+      "drops": {
+        "nether_wart": 1020,
+        "wild_rose": 680
+      },
+      "spawn_weight": 25
+    },
+    "coalroot": {
+      "name": "Coalroot",
+      "size": 1,
+      "ground": "farmland",
+      "requirements": [
+        {
+          "crop": "ashwreath",
+          "count": 5
+        },
+        {
+          "crop": "scourroot",
+          "count": 3
+        }
+      ],
+      "rarity": "uncommon",
+      "growth_stages": 8,
+      "decay": 3,
+      "minimum_mutations": 10,
+      "positive_buffs": [
+        "xp_boost"
+      ],
+      "negative_buffs": [],
+      "requires_watering": true,
+      "drops": {
+        "potato": 510,
+        "carrot": 1190,
+        "nether_wart": 510
+      },
+      "spawn_weight": 25
+    },
+    "creambloom": {
+      "name": "Creambloom",
+      "size": 1,
+      "ground": "farmland",
+      "requirements": [
+        {
+          "crop": "choconut",
+          "count": 8
+        }
+      ],
+      "rarity": "uncommon",
+      "growth_stages": 6,
+      "decay": 3,
+      "minimum_mutations": 8,
+      "positive_buffs": [
+        "immunity"
+      ],
+      "negative_buffs": [],
+      "requires_watering": true,
+      "drops": {
+        "cocoa_beans": 2240
+      },
+      "spawn_weight": 25
+    },
+    "duskbloom": {
+      "name": "Duskbloom",
+      "size": 1,
+      "ground": "farmland",
+      "requirements": [
+        {
+          "crop": "moonflower",
+          "count": 2
+        },
+        {
+          "crop": "shadevine",
+          "count": 2
+        },
+        {
+          "crop": "sunflower",
+          "count": 2
+        },
+        {
+          "crop": "dustgrain",
+          "count": 2
+        }
+      ],
+      "rarity": "uncommon",
+      "growth_stages": 8,
+      "decay": 3,
+      "minimum_mutations": 8,
+      "positive_buffs": [
+        "bonus_drops"
+      ],
+      "negative_buffs": [],
+      "requires_watering": true,
+      "drops": {
+        "moonflower": 720,
+        "sunflower": 720,
+        "wheat": 360
+      },
+      "spawn_weight": 25
+    },
+    "thornshade": {
+      "name": "Thornshade",
+      "size": 1,
+      "ground": "farmland",
+      "requirements": [
+        {
+          "crop": "wild_rose",
+          "count": 4
+        },
+        {
+          "crop": "veilshroom",
+          "count": 4
+        }
+      ],
+      "rarity": "uncommon",
+      "growth_stages": 8,
+      "decay": 3,
+      "minimum_mutations": 8,
+      "positive_buffs": [
+        "effect_spread"
+      ],
+      "negative_buffs": [],
+      "requires_watering": true,
+      "drops": {
+        "brown_mushroom": 190,
+        "red_mushroom": 190,
+        "wild_rose": 800
+      },
+      "spawn_weight": 25
+    },
+    "blastberry": {
+      "name": "Blastberry",
+      "size": 1,
+      "ground": "sand",
+      "requirements": [
+        {
+          "crop": "chocoberry",
+          "count": 5
+        },
+        {
+          "crop": "ashwreath",
+          "count": 3
+        }
+      ],
+      "rarity": "rare",
+      "growth_stages": 6,
+      "decay": 3,
+      "minimum_mutations": 8,
+      "positive_buffs": [
+        "immunity",
+        "improved_harvest_boost"
+      ],
+      "negative_buffs": [
+        "xp_loss"
+      ],
+      "harvest_info": "When using a shared setup, DO NOT harvest until all surrounding mutation spots have been filled.",
+      "growing_info": "Since Blastberry explodes on harvest when primed, it is wise to also plant Turtlellini around your naturally grown Blastberry to use each explosion as efficiently as possible. When replaced, it takes 1 stage to prime for explosion. When it decays, Blastberry will explode.",
+      "requires_watering": true,
+      "drops": {
+        "cocoa_beans": 800,
+        "nether_wart": 1200
+      },
+      "spawn_weight": 25
+    },
+    "cheesebite": {
+      "name": "Cheesebite",
+      "size": 1,
+      "ground": "farmland",
+      "requirements": [
+        {
+          "crop": "creambloom",
+          "count": 4
+        },
+        {
+          "crop": "fermento",
+          "count": 4
+        }
+      ],
+      "rarity": "rare",
+      "growth_stages": 10,
+      "decay": 3,
+      "minimum_mutations": 8,
+      "positive_buffs": [
+        "improved_water_retain"
+      ],
+      "negative_buffs": [
+        "harvest_loss"
+      ],
+      "growing_info": "Rats spawn on Stages 4 and 7, halting mutation growth, and need to be dealt with like a normal Pest.",
+      "requires_watering": true,
+      "drops": {
+        "brown_mushroom": 253,
+        "red_mushroom": 253,
+        "cactus": 800,
+        "sugar_cane": 1067
+      },
+      "spawn_weight": 25
+    },
+    "chloronite": {
+      "name": "Chloronite",
+      "size": 1,
+      "ground": "farmland",
+      "requirements": [
+        {
+          "crop": "coalroot",
+          "count": 6
+        },
+        {
+          "crop": "thornshade",
+          "count": 2
+        }
+      ],
+      "rarity": "rare",
+      "growth_stages": 10,
+      "decay": 3,
+      "minimum_mutations": 8,
+      "positive_buffs": [
+        "immunity"
+      ],
+      "negative_buffs": [],
+      "harvest_info": "At harvest, you will want to have your highest Mining Fortune setup equipped to mine the Chloronite to obtain more mutation drops. How many Chloronite you get is determined by the table below. Fortune between two tiers gives a chance at the next amount (e.g. 1,500 Mining Fortune gives 3 Chloronite and a 50% chance of a 4th).",
+      "harvest_table": {
+        "title": "Drops by Mining Fortune",
+        "columns": ["Mining Fortune", "Chloronite Drops"],
+        "rows": [
+          ["0–99", "~0–1"],
+          ["100–499", "~1–2"],
+          ["500–999", "~2–3"],
+          ["1,000–1,999", "~3–4"],
+          ["2,000+", "4"]
+        ]
+      },
+      "requires_watering": true,
+      "drops": {
+        "brown_mushroom": 128,
+        "red_mushroom": 128,
+        "wild_rose": 540,
+        "potato": 810,
+        "carrot": 945
+      },
+      "spawn_weight": 25
+    },
+    "do_not_eat_shroom": {
+      "name": "Do-not-eat-shroom",
+      "size": 1,
+      "ground": "farmland",
+      "requirements": [
+        {
+          "crop": "veilshroom",
+          "count": 4
+        },
+        {
+          "crop": "scourroot",
+          "count": 4
+        }
+      ],
+      "rarity": "rare",
+      "growth_stages": 8,
+      "decay": 3,
+      "minimum_mutations": 8,
+      "positive_buffs": [
+        "improved_harvest_boost"
+      ],
+      "negative_buffs": [
+        "water_drain"
+      ],
+      "harvest_info": "Inflicts blindness and nausea when harvesting",
+      "requires_watering": true,
+      "drops": {
+        "brown_mushroom": 200,
+        "red_mushroom": 200,
+        "potato": 630,
+        "carrot": 735
+      },
+      "spawn_weight": 25
+    },
+    "fleshtrap": {
+      "name": "Fleshtrap",
+      "size": 1,
+      "ground": "farmland",
+      "requirements": [
+        {
+          "crop": "cindershade",
+          "count": 4
+        },
+        {
+          "crop": "lonelily",
+          "count": 4
+        }
+      ],
+      "rarity": "rare",
+      "growth_stages": 14,
+      "decay": 0,
+      "minimum_mutations": 6,
+      "positive_buffs": [
+        "bonus_drops"
+      ],
+      "negative_buffs": [],
+      "harvest_info": "Gives +1 Fleshtrap drop at Full Bonus Meter.",
+      "growing_info": "Feed with Enchanted Raw Meat until Fleshtrap has hit 100% Bonus. After 100% Bonus is reached, keep it full with unenchanted meat (i.e. Raw Beef) until it is time to harvest.",
+      "requires_watering": true,
+      "drops": {
+        "pumpkin": 289,
+        "potato": 510,
+        "carrot": 595
+      },
+      "spawn_weight": 25
+    },
+    "magic_jellybean": {
+      "name": "Magic Jellybean",
+      "size": 1,
+      "ground": "sand",
+      "requirements": [
+        {
+          "crop": "sugar_cane",
+          "count": 5
+        },
+        {
+          "crop": "duskbloom",
+          "count": 3
+        }
+      ],
+      "rarity": "rare",
+      "growth_stages": 120,
+      "decay": 0,
+      "minimum_mutations": "infinite",
+      "positive_buffs": [
+        "improved_xp_boost"
+      ],
+      "negative_buffs": [
+        "harvest_loss"
+      ],
+      "growing_info": "Harvestable at Stage 12 and above, every 12th stage results in +1 mutation drop at base (i.e. Stage 24/36/48...).",
+      "requires_watering": true,
+      "drops": {
+        "moonflower": 600,
+        "sunflower": 600,
+        "sugar_cane": 1200
+      },
+      "spawn_weight": 25
+    },
+    "noctilume": {
+      "name": "Noctilume",
+      "size": 2,
+      "ground": "farmland",
+      "requirements": [
+        {
+          "crop": "duskbloom",
+          "count": 6
+        },
+        {
+          "crop": "lonelily",
+          "count": 6
+        }
+      ],
+      "rarity": "rare",
+      "growth_stages": 4,
+      "decay": 6,
+      "minimum_mutations": 8,
+      "positive_buffs": [
+        "effect_spread",
+        "improved_water_retain"
+      ],
+      "negative_buffs": [
+        "harvest_loss"
+      ],
+      "growing_info": "Must change the time of day each growth stage. The plant will display what time of day it \"Craves\". ",
+      "requires_watering": true,
+      "drops": {
+        "cactus": 1590,
+        "wild_rose": 2120
+      },
+      "spawn_weight": 25
+    },
+    "snoozling": {
+      "name": "Snoozling",
+      "size": 3,
+      "ground": "farmland",
+      "requirements": [
+        {
+          "crop": "creambloom",
+          "count": 4
+        },
+        {
+          "crop": "dustgrain",
+          "count": 3
+        },
+        {
+          "crop": "witherbloom",
+          "count": 3
+        },
+        {
+          "crop": "duskbloom",
+          "count": 3
+        },
+        {
+          "crop": "thornshade",
+          "count": 3
+        }
+      ],
+      "rarity": "rare",
+      "growth_stages": 20,
+      "decay": 6,
+      "minimum_mutations": 8,
+      "positive_buffs": [
+        "bonus_drops"
+      ],
+      "negative_buffs": [],
+      "growing_info": "Must wake it up every 5 stages (Stage 5, Stage 10, Stage 15) for it to continue growing, otherwise it will pause at one of those 3 stages.",
+      "requires_watering": true,
+      "drops": {
+        "moonflower": 4200,
+        "sunflower": 4200,
+        "cactus": 3150,
+        "sugar_cane": 4200
+      },
+      "spawn_weight": 25
+    },
+    "soggybud": {
+      "name": "Soggybud",
+      "size": 1,
+      "ground": "farmland",
+      "requirements": [
+        {
+          "crop": "melon",
+          "count": 2
+        },
+        {
+          "crop": "gloomgourd",
+          "count": 2
+        }
+      ],
+      "rarity": "rare",
+      "growth_stages": 10,
+      "decay": 3,
+      "minimum_mutations": 8,
+      "positive_buffs": [
+        "water_retain"
+      ],
+      "negative_buffs": [],
+      "growing_info": "Soaks up water from nearby waterable crops/mutations, allowing for Soggybud to grow. Fills 2.5 water per nearby crop, approximately up to 10 per stage.",
+      "requires_watering": true,
+      "drops": {
+        "melon": 1920
+      },
+      "spawn_weight": 25
+    },
+    "chorus_fruit": {
+      "name": "Chorus Fruit",
+      "size": 1,
+      "ground": "end_stone",
+      "requirements": [
+        {
+          "crop": "chloronite",
+          "count": 5
+        },
+        {
+          "crop": "magic_jellybean",
+          "count": 3
+        }
+      ],
+      "rarity": "epic",
+      "growth_stages": 12,
+      "decay": 5,
+      "minimum_mutations": 6,
+      "positive_buffs": [
+        "improved_xp_boost"
+      ],
+      "negative_buffs": [
+        "harvest_loss"
+      ],
+      "growing_info": "When growing, the plant will teleport around the plot and override any space it finds, changing it to End Stone (including air), and also will leave the spawning location open again. When the amount of growing Chorus Fruits outnumbers the amount of open spots for teleporting, non-Chorus Fruit crops/mutations are at risk of being voided, such as the Magic Jellybean and Chloronite used in the setup (even if they are growing crops). When multiple Chorus Fruit teleport, it is possible for them to teleport to the same spot and delete one another with the higher growth stage plant taking priority.",
+      "requires_watering": false,
+      "drops": {
+        "potato": 1050,
+        "carrot": 1225,
+        "sugar_cane": 1400
+      },
+      "spawn_weight": 25
+    },
+    "plantboy_advance": {
+      "name": "PlantBoy Advance",
+      "size": 2,
+      "ground": "farmland",
+      "requirements": [
+        {
+          "crop": "snoozling",
+          "count": 6
+        },
+        {
+          "crop": "thunderling",
+          "count": 6
+        }
+      ],
+      "rarity": "epic",
+      "growth_stages": 12,
+      "decay": 5,
+      "minimum_mutations": 6,
+      "positive_buffs": [
+        "harvest_boost"
+      ],
+      "negative_buffs": [],
+      "harvest_info": "You will play a game of Snake (exactly the same as what is found in Abiphones) and you must collect 8 Apples. If you fail, it stays at max stage and you can immediately try again.",
+      "requires_watering": false,
+      "drops": {
+        "moonflower": 4600,
+        "sunflower": 4600,
+        "wheat": 4600
+      },
+      "spawn_weight": 25
+    },
+    "puffercloud": {
+      "name": "Puffercloud",
+      "size": 1,
+      "ground": "farmland",
+      "requirements": [
+        {
+          "crop": "snoozling",
+          "count": 2
+        },
+        {
+          "crop": "do_not_eat_shroom",
+          "count": 6
+        }
+      ],
+      "rarity": "epic",
+      "growth_stages": 14,
+      "decay": 5,
+      "minimum_mutations": 6,
+      "positive_buffs": [
+        "improved_harvest_boost"
+      ],
+      "negative_buffs": [
+        "water_drain"
+      ],
+      "growing_info": "Puffercloud will do AOE damage when you are within its range when growing.",
+      "requires_watering": true,
+      "drops": {
+        "brown_mushroom": 570,
+        "red_mushroom": 570,
+        "moonflower": 1200,
+        "sunflower": 1200
+      },
+      "spawn_weight": 25
+    },
+    "shellfruit": {
+      "name": "Shellfruit",
+      "size": 1,
+      "ground": "farmland",
+      "requirements": [],
+      "special": "explode_turtlellini_with_blastberry",
+      "rarity": "epic",
+      "growth_stages": 0,
+      "decay": 3,
+      "minimum_mutations": 6,
+      "positive_buffs": [
+        "immunity",
+        "water_retain"
+      ],
+      "negative_buffs": [],
+      "growing_info": "Turtlellini must be exploded TWICE by Blastberry to make a Shellfruit.",
+      "requires_watering": false,
+      "drops": {
+        "cocoa_beans": 400
+      },
+      "spawn_weight": 0
+    },
+    "startlevine": {
+      "name": "Startlevine",
+      "size": 1,
+      "ground": "farmland",
+      "requirements": [
+        {
+          "crop": "blastberry",
+          "count": 4
+        },
+        {
+          "crop": "cheesebite",
+          "count": 4
+        }
+      ],
+      "rarity": "epic",
+      "growth_stages": 12,
+      "decay": 5,
+      "minimum_mutations": 6,
+      "positive_buffs": [
+        "improved_xp_boost",
+        "improved_water_retain"
+      ],
+      "negative_buffs": [
+        "harvest_loss"
+      ],
+      "harvest_info": "Wear Sorrow Armor (or have the Invisibility Effect). Careful not to detonate any of your Blastberry within the setup.",
+      "requires_watering": true,
+      "drops": {
+        "cactus": 2250,
+        "sugar_cane": 3000
+      },
+      "spawn_weight": 25
+    },
+    "stoplight_petal": {
+      "name": "Stoplight Petal",
+      "size": 1,
+      "ground": "farmland",
+      "requirements": [
+        {
+          "crop": "snoozling",
+          "count": 4
+        },
+        {
+          "crop": "noctilume",
+          "count": 4
+        }
+      ],
+      "rarity": "epic",
+      "growth_stages": 12,
+      "decay": 5,
+      "minimum_mutations": null,
+      "positive_buffs": [
+        "effect_spread",
+        "improved_water_retain"
+      ],
+      "negative_buffs": [
+        "harvest_loss"
+      ],
+      "harvest_info": "Play a game of \"Red Light/Green Light\" and swing/\"break\" when you see \"Green Light\". Stop once it changes to yellow and then red. It takes upwards of 6 \"rounds\" to fully harvest the mutation. If you fail, it stays at the same stage and you can try again.",
+      "requires_watering": true,
+      "drops": {
+        "cactus": 7500,
+        "wild_rose": 10000
+      },
+      "spawn_weight": 25
+    },
+    "thunderling": {
+      "name": "Thunderling",
+      "size": 1,
+      "ground": "farmland",
+      "requirements": [
+        {
+          "crop": "soggybud",
+          "count": 5
+        },
+        {
+          "crop": "noctilume",
+          "count": 3
+        }
+      ],
+      "rarity": "epic",
+      "growth_stages": 16,
+      "decay": 6,
+      "minimum_mutations": 6,
+      "positive_buffs": [
+        "effect_spread"
+      ],
+      "negative_buffs": [],
+      "harvest_info": "Make sure to release the charge before harvesting to not waste any.",
+      "growing_info": "While growing Thunderling, it is required you release the built up charge (fills your Thunder in a Bottle items) at least once every 8 stages (~16,000 charge) for the mutation to continue growing. Additionally, a Thunderling should produce a base of 28,000 charge per fully grown mutation.",
+      "requires_watering": false,
+      "drops": {
+        "cactus": 1650,
+        "melon": 4400,
+        "wild_rose": 4400
+      },
+      "spawn_weight": 25
+    },
+    "turtlellini": {
+      "name": "Turtlellini",
+      "size": 1,
+      "ground": "farmland",
+      "requirements": [
+        {
+          "crop": "soggybud",
+          "count": 4
+        },
+        {
+          "crop": "choconut",
+          "count": 4
+        }
+      ],
+      "rarity": "rare",
+      "growth_stages": 0,
+      "decay": 3,
+      "minimum_mutations": null,
+      "positive_buffs": [
+        "immunity",
+        "water_retain"
+      ],
+      "negative_buffs": [],
+      "requires_watering": false,
+      "drops": {
+        "melon": 800
+      },
+      "spawn_weight": 25
+    },
+    "zombud": {
+      "name": "Zombud",
+      "size": 1,
+      "ground": "soul_sand",
+      "requirements": [
+        {
+          "crop": "dead_plant",
+          "count": 4
+        },
+        {
+          "crop": "cindershade",
+          "count": 2
+        },
+        {
+          "crop": "fleshtrap",
+          "count": 2
+        }
+      ],
+      "rarity": "epic",
+      "growth_stages": 16,
+      "decay": 5,
+      "minimum_mutations": 6,
+      "positive_buffs": [
+        "effect_spread",
+        "bonus_drops"
+      ],
+      "negative_buffs": [],
+      "harvest_info": "When harvested, all Dead Plants within the 3x3 turn into Zombud Mobs (5 HP, hit-based) and must be killed for the mutation, shard, and Bestiary credit. Useful tools for killing: Fire Freeze Staff, Gyrokinetic Wand, Huntaxes, Blackholes.",
+      "growing_info": "If kicked from Garden/you leave Garden before killing the Zombuds, they will despawn. In shared setups make sure you replant extra dead plants to get the max yield from each mutation. If the mutation decays, the Zombuds will spawn right as it decays if you have Dead Plants in place.",
+      "requires_watering": false,
+      "drops": {
+        "pumpkin": 765,
+        "wild_rose": 1800
+      },
+      "spawn_weight": 25
+    },
+    "all_in_aloe": {
+      "name": "All-in Aloe",
+      "size": 1,
+      "ground": "sand",
+      "requirements": [
+        {
+          "crop": "magic_jellybean",
+          "count": 6
+        },
+        {
+          "crop": "plantboy_advance",
+          "count": 2
+        }
+      ],
+      "rarity": "legendary",
+      "growth_stages": 27,
+      "decay": 0,
+      "minimum_mutations": null,
+      "positive_buffs": [
+        "harvest_boost"
+      ],
+      "negative_buffs": [],
+      "harvest_info": "Harvestable for actual drops at Stage 4 and beyond. The stage it is harvested at sets a drop multiplier for its All-in Aloe Fragments and crop drops, and every 9 fragments are given as 1 All-in Aloe instead. Each time it grows into a new stage, it rolls the reset chance of the stage it is leaving and may go back to Stage 1. Higher stages give far bigger drops but are much less likely to be reached; Stage 14 gives the most drops on average.",
+      "harvest_table": {
+        "title": "Drops and reset chance by stage",
+        "columns": ["Stage", "Drop Multiplier", "Reset Chance", "Expected Drops"],
+        "rows": [
+          ["4", "1x", "3%", "1.00"],
+          ["5", "2x", "6%", "1.94"],
+          ["6", "3x", "9%", "2.74"],
+          ["7", "4x", "12%", "3.32"],
+          ["8", "6x", "15%", "4.38"],
+          ["9", "9x", "18%", "5.59"],
+          ["10", "13x", "21%", "6.62"],
+          ["11", "20x", "24%", "8.04"],
+          ["12", "28x", "27%", "8.56"],
+          ["13", "41x", "30%", "9.15"],
+          ["14", "60x", "33%", "9.37"],
+          ["15", "86x", "36%", "9.00"],
+          ["16", "125x", "39%", "8.37"],
+          ["17", "182x", "42%", "7.43"],
+          ["18", "263x", "45%", "6.23"],
+          ["19", "382x", "48%", "4.98"],
+          ["20", "554x", "51%", "3.75"],
+          ["21", "803x", "54%", "2.67"],
+          ["22", "1164x", "57%", "1.78"],
+          ["23", "1688x", "60%", "1.11"],
+          ["24", "2448x", "63%", "0.64"],
+          ["25", "3549x", "66%", "0.34"],
+          ["26", "5146x", "69%", "0.17"],
+          ["27", "7462x", "72%", "0.08"]
+        ]
+      },
+      "requires_watering": false,
+      "drops": {
+        "moonflower": 140,
+        "sunflower": 140,
+        "wheat": 140
+      },
+      "spawn_weight": 25
+    },
+    "devourer": {
+      "name": "Devourer",
+      "size": 1,
+      "ground": "farmland",
+      "requirements": [
+        {
+          "crop": "puffercloud",
+          "count": 4
+        },
+        {
+          "crop": "zombud",
+          "count": 4
+        }
+      ],
+      "rarity": "legendary",
+      "growth_stages": 16,
+      "decay": 5,
+      "minimum_mutations": null,
+      "positive_buffs": [
+        "improved_harvest_boost",
+        "bonus_drops"
+      ],
+      "negative_buffs": [
+        "water_drain"
+      ],
+      "growing_info": "If you remove the farmland surrounding the Devourer setup, the roots it will try to spread will not be able to make it outside of the contained area. Break the roots as you see them as well.",
+      "requires_watering": true,
+      "drops": {
+        "brown_mushroom": 1805,
+        "red_mushroom": 1805,
+        "pumpkin": 3230
+      },
+      "spawn_weight": 20
+    },
+    "glasscorn": {
+      "name": "Glasscorn",
+      "size": 2,
+      "ground": "sand",
+      "requirements": [
+        {
+          "crop": "startlevine",
+          "count": 6
+        },
+        {
+          "crop": "chloronite",
+          "count": 6
+        }
+      ],
+      "rarity": "legendary",
+      "growth_stages": 8,
+      "decay": 3,
+      "minimum_mutations": null,
+      "positive_buffs": [
+        "immunity",
+        "improved_water_retain"
+      ],
+      "negative_buffs": [
+        "harvest_loss"
+      ],
+      "harvest_info": "Harvestable Glasscorn is not at max stage (Stage 9) but rather at Stages 7-8. If not harvested in time, it will reset.",
+      "requires_watering": true,
+      "drops": {
+        "potato": 4800,
+        "cactus": 7200
+      },
+      "spawn_weight": 20
+    },
+    "godseed": {
+      "name": "Godseed",
+      "size": 3,
+      "ground": "farmland",
+      "requirements": [],
+      "special": "all_positive_crop_effects",
+      "rarity": "legendary",
+      "growth_stages": 40,
+      "decay": 10,
+      "minimum_mutations": null,
+      "positive_buffs": [
+        "improved_harvest_boost",
+        "improved_water_retain",
+        "improved_xp_boost",
+        "immunity",
+        "bonus_drops",
+        "effect_spread"
+      ],
+      "negative_buffs": [],
+      "growing_info": "Godseed is very much like a weed and will spread through a plot if there is an adjacent crop that is placed in a spot it could spread all of the positive effects to another open enough area.",
+      "requires_watering": true,
+      "drops": {
+        "brown_mushroom": 117,
+        "cocoa_beans": 492,
+        "moonflower": 492,
+        "carrot": 862,
+        "sunflower": 492,
+        "cactus": 369,
+        "sugar_cane": 492,
+        "pumpkin": 209,
+        "wheat": 246,
+        "melon": 985,
+        "potato": 738,
+        "nether_wart": 738,
+        "red_mushroom": 117,
+        "wild_rose": 492
+      },
+      "spawn_weight": 5
+    },
+    "jerryflower": {
+      "name": "Jerryflower",
+      "size": 1,
+      "ground": "farmland",
+      "requirements": [],
+      "special": "grow_the_jerryseed",
+      "rarity": "legendary",
+      "growth_stages": 10,
+      "decay": 10,
+      "minimum_mutations": null,
+      "positive_buffs": [],
+      "negative_buffs": [],
+      "growing_info": "Obtain a Unfulfilled Jerryseed from a Jerry Visitor and take it to Xalx in the Crystal Hollows with a Mysterious Crop. He will give you back an Unripe Jerryseed that you have to reforge to a Dirty Unripe Jerryseed and take to Dirt in the Dwarven Mines. Dirt will give you the Fertilized Jerryseed in return. When growing, Jerryflower will stop at Stage 5 until it is fed 10x Move Jerry.",
+      "requires_watering": false,
+      "drops": {},
+      "spawn_weight": 0
+    },
+    "phantomleaf": {
+      "name": "Phantomleaf",
+      "size": 1,
+      "ground": "soul_sand",
+      "requirements": [
+        {
+          "crop": "chorus_fruit",
+          "count": 4
+        },
+        {
+          "crop": "shellfruit",
+          "count": 4
+        }
+      ],
+      "rarity": "legendary",
+      "growth_stages": 15,
+      "decay": 5,
+      "minimum_mutations": null,
+      "positive_buffs": [
+        "immunity",
+        "xp_boost"
+      ],
+      "negative_buffs": [],
+      "harvest_info": "When fully grown, break the Phantomleaf and be ready to look at ANY plant on the same plot as the Phantom leaf. When you find the fastest heartbeat, that is the one you need to break. You have 1 minute to harvest it. If you fail, you will have to grow another.",
+      "requires_watering": false,
+      "drops": {
+        "potato": 3000,
+        "carrot": 3500
+      },
+      "spawn_weight": 20
+    },
+    "timestalk": {
+      "name": "Timestalk",
+      "size": 1,
+      "ground": "end_stone",
+      "requirements": [
+        {
+          "crop": "stoplight_petal",
+          "count": 4
+        },
+        {
+          "crop": "chorus_fruit",
+          "count": 2
+        },
+        {
+          "crop": "shellfruit",
+          "count": 2
+        }
+      ],
+      "rarity": "legendary",
+      "growth_stages": 14,
+      "decay": 5,
+      "minimum_mutations": null,
+      "positive_buffs": [
+        "improved_xp_boost",
+        "improved_water_retain"
+      ],
+      "negative_buffs": [
+        "harvest_loss"
+      ],
+      "harvest_info": "When harvested, a clone of yourself will spawn. The clone is not too difficult to kill, but if you care to make it easier, spawn the clone without any armor on.",
+      "growing_info": "Timestalks \"grow backwards\" in the case they start as a \"fully grown plant\" and shrink over time. When ready to be harvested, it will be smaller than a player head in size.",
+      "requires_watering": true,
+      "drops": {
+        "cactus": 2700,
+        "sugar_cane": 3600
+      },
+      "spawn_weight": 20
+    }
+  },
+  "effects": {
+    "xp_boost": {
+      "name": "XP Boost",
+      "description": "Increases Farming XP of adjacent crops by +20%"
+    },
+    "improved_xp_boost": {
+      "name": "Improved XP Boost",
+      "description": "Increases Farming XP of adjacent crops by +30%"
+    },
+    "harvest_boost": {
+      "name": "Harvest Boost",
+      "description": "Increases Yield by +20%"
+    },
+    "improved_harvest_boost": {
+      "name": "Improved Harvest Boost",
+      "description": "Increases Yield by +30%"
+    },
+    "water_retain": {
+      "name": "Water Retain",
+      "description": "Retains watering status of adjacent crops by +50%"
+    },
+    "improved_water_retain": {
+      "name": "Improved Water Retain",
+      "description": "Retains watering status of adjacent crops by +100%"
+    },
+    "immunity": {
+      "name": "Immunity",
+      "description": "Provides Immunity to negative effects."
+    },
+    "bonus_drops": {
+      "name": "Bonus Drops",
+      "description": "Harvest Items additionally roll from an extra loot pool."
+    },
+    "effect_spread": {
+      "name": "Effect Spread",
+      "description": "Spreads other buffs and debuffs on the current crop to adjacent crops."
+    },
+    "xp_loss": {
+      "name": "XP Loss",
+      "description": "Reduces Farming XP of adjacent crops by -20%"
+    },
+    "harvest_loss": {
+      "name": "Harvest Loss",
+      "description": "Decreases Yield by -20%"
+    },
+    "water_drain": {
+      "name": "Water Drain",
+      "description": "Reduces watering status of nearby crops by -30%"
+    }
+  }
+}
