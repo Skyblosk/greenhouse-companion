@@ -220,13 +220,13 @@ class OverlayTest {
 				"Times Mutated: 2", "", "Decay Info", "Combined Mutates Remaining: 26", "Status: Uncollectable"));
 		assertNotNull(placed);
 		assertTrue(placed.fullyGrown());
-		assertEquals(StageTracker.Origin.PLACED, placed.origin(true, true));
+		assertEquals(StageTracker.Origin.PLACED, placed.origin(true, true, false));
 
 		Diagnosis growing = Diagnosis.parse("Glasscorn", List.of("Stage: 6/8", "Next Stage: 1h 36m 2s", "Status: Wilting"));
 		assertNotNull(growing);
 		assertEquals(6, growing.stage());
 		assertTrue(growing.stalled());
-		assertEquals(StageTracker.Origin.SPAWNED, growing.origin(true, false));
+		assertEquals(StageTracker.Origin.SPAWNED, growing.origin(true, false, false));
 		assertNull(Diagnosis.parse("Glasscorn", List.of("Next Stage: 1h 36m 2s", "Age: 3d")), "a countdown or age is never a stage");
 
 		// A Zombud the tracker took for spawned at 14-16 is placed and fully grown per the menu

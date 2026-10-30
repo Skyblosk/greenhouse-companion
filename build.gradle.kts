@@ -2,6 +2,7 @@ import dev.ilyapple.ghc.sharedvariables.ProjectTarget
 import dev.kikugie.stonecutter.StonecutterExperimentalAPI
 import net.fabricmc.loom.task.ValidateAccessWidenerTask
 import java.util.Properties
+import java.io.File
 
 plugins {
     java
@@ -121,12 +122,15 @@ tasks.test {
     // The replay tests read the recorder's real files (minecraftDir above); GHF_RECORDINGS points them elsewhere
     environment("GHF_RECORDINGS", System.getenv("GHF_RECORDINGS") ?: recorder)
     environment("GHC_DROP_LOGS", System.getenv("GHC_DROP_LOGS") ?: dropLogs)
-    environment("GHF_REPORT", System.getenv("GHF_REPORT") ?: rootProject.file("replay-report.md").absolutePath)
+    val replayReport = rootProject.file(System.getenv("GHF_REPORT")
+        ?: layout.buildDirectory.file("reports/replay.md").get().asFile.absolutePath).absolutePath
+    environment("GHF_REPORT", replayReport)
+    doFirst { File(replayReport).parentFile.mkdirs() }
     environment("GHF_TRACE", System.getenv("GHF_TRACE") ?: "")
     testLogging {
         events("failed")
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
-        showStandardStreams = true
+        showStandardStreams = false
     }
 }
 

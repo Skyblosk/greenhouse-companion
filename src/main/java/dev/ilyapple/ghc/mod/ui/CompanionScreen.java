@@ -31,13 +31,11 @@ import dev.ilyapple.ghc.core.StageSet;
 import dev.ilyapple.ghc.core.StageTracker;
 import dev.ilyapple.ghc.core.flow.Census;
 import dev.ilyapple.ghc.core.flow.Estimator;
-import dev.ilyapple.ghc.core.flow.ExitEvaluator;
 import dev.ilyapple.ghc.core.flow.FlowCheck;
 import dev.ilyapple.ghc.core.flow.FlowRunner;
 import dev.ilyapple.ghc.core.flow.Flows;
 import dev.ilyapple.ghc.core.schematic.Schematic;
 import dev.ilyapple.ghc.core.leaderboard.Leaderboard;
-import dev.ilyapple.ghc.core.schematic.SkyblockerCrops;
 import dev.ilyapple.ghc.mod.GreenhouseCompanion;
 import dev.ilyapple.ghc.mod.JellybeanView;
 import dev.ilyapple.ghc.mod.ModState;
@@ -75,7 +73,7 @@ public final class CompanionScreen extends Screen {
 		}
 	}
 
-	private record Hotspot(int x, int y, int w, int h, Consumer<MouseButtonEvent> action) {
+	record Hotspot(int x, int y, int w, int h, Consumer<MouseButtonEvent> action) {
 		boolean contains(double mx, double my) {
 			return mx >= x && mx < x + w && my >= y && my < y + h;
 		}
@@ -95,31 +93,15 @@ public final class CompanionScreen extends Screen {
 	private @Nullable String confirm;
 	private long confirmMs;
 
-	/** A typed exit amount on the Flow page: the box and the condition field it edits. */
-	private record AmountField(EditBox box, int plotId, String stepId, int exitIndex, int conditionIndex, String field, int value) {}
-
-	private final Map<String, AmountField> amountBoxes = new LinkedHashMap<>();
-	private @Nullable String amountsBuiltFor;
+	private final FlowPage flow = new FlowPage(this);
+	private final LeaderboardPage leaderboard = new LeaderboardPage(this);
+	private final SettingsPage settingsPage = new SettingsPage(this);
 	private Page page;
 	private int siteIndex;
 	private @Nullable String siteKey;
-	private @Nullable Integer selectedStep;
-	private boolean live = true;
-	private int stepScroll;
 	private int inventoryScroll;
 	private int libraryScroll;
-	private int settingsScroll;
 	private int stagesScroll;
-	private boolean debugOpen;
-	private int boardScroll;
-	private int boardDetailScroll;
-	private Leaderboard.Mode boardMode = Leaderboard.Mode.FLOW;
-	private Leaderboard.Sort boardSort = Leaderboard.Sort.COINS;
-	private int boardInterval = 1;
-	/** The board's numbers for this many plots (the simulations ran on one; 3 by default, like the user's greenhouse). */
-	private int boardPlots = 3;
-	private @Nullable String boardSelected;
-	private String boardStatus = "";
 	private int renaming = -1;
 	private String importStatus = "";
 	private int importColor = Theme.MUTED;
@@ -156,7 +138,7 @@ public final class CompanionScreen extends Screen {
 		}
 	}
 
-	private void addHotspot(Hotspot hotspot) {
+	void addHotspot(Hotspot hotspot) {
 		(drawingMenu ? menuHotspots : hotspots).add(hotspot);
 	}
 
@@ -175,23 +157,23 @@ public final class CompanionScreen extends Screen {
 		}
 	}
 
-	private ModState state() {
+	ModState state() {
 		return GreenhouseCompanion.state();
 	}
 
-	private Settings settings() {
+	Settings settings() {
 		return GreenhouseCompanion.settings();
 	}
 
-	private int contentX() {
+	int contentX() {
 		return Theme.SIDEBAR_W + Theme.PAD;
 	}
 
-	private int contentW() {
+	int contentW() {
 		return width - contentX() - Theme.PAD;
 	}
 
-	private int contentTop() {
+	int contentTop() {
 		return Theme.PAD + 30;
 	}
 
@@ -209,7 +191,7 @@ public final class CompanionScreen extends Screen {
 	}
 
 	/** Tooltips are drawn after the window, unscaled, so they take screen coordinates. */
-	private void tooltip(GuiGraphicsExtractor g, List<Component> lines, int mouseX, int mouseY) {
+	void tooltip(GuiGraphicsExtractor g, List<Component> lines, int mouseX, int mouseY) {
 		g.setComponentTooltipForNextFrame(font, lines, Math.round(mouseX * ui), Math.round(mouseY * ui));
 	}
 
@@ -226,8 +208,7 @@ public final class CompanionScreen extends Screen {
 		renameBox = null;
 		importBox = null;
 		profileBox = null;
-		amountBoxes.clear();
-		amountsBuiltFor = null;
+		flow.clearWidgets();
 		int x = contentX();
 		int w = contentW();
 		if (renamingProfile) {
@@ -237,7 +218,7 @@ public final class CompanionScreen extends Screen {
 			addRenderableWidget(profileBox);
 			setFocused(profileBox);
 		}
-		if (page == Page.FLOW) buildAmountBoxes();
+		if (page == Page.FLOW) flow.buildAmountBoxes();
 		countBox = null;
 		if (page == Page.INVENTORY) {
 			search = new EditBox(font, x + w - 140, Theme.PAD + 4, 140, 16, Component.literal("Search"));
@@ -323,14 +304,14 @@ public final class CompanionScreen extends Screen {
 	// Greenhouses
 
 	/** The greenhouses of the profile the window shows, the one you stand in first. */
-	private List<ModState.Site> sites() {
+	List<ModState.Site> sites() {
 		List<ModState.Site> sites = new ArrayList<>(state().sites(state().viewedProfile()));
 		ModState.Site current = GreenhouseCompanion.currentSite();
 		sites.sort(Comparator.comparing((ModState.Site site) -> !site.equals(current)).thenComparingInt(ModState.Site::plotNumber));
 		return sites;
 	}
 
-	private ModState.@Nullable Site site() {
+	ModState.@Nullable Site site() {
 		List<ModState.Site> sites = sites();
 		if (sites.isEmpty()) return null;
 		if (siteKey != null) {
@@ -346,17 +327,17 @@ public final class CompanionScreen extends Screen {
 		return sites.get(siteIndex);
 	}
 
-	private void moveSite(int delta) {
+	void moveSite(int delta) {
 		List<ModState.Site> sites = sites();
 		if (sites.isEmpty()) return;
 		site();
 		siteIndex = Math.floorMod(siteIndex + delta, sites.size());
 		siteKey = sites.get(siteIndex).key();
-		selectedStep = null;
+		flow.followCurrentStep();
 		refresh();
 	}
 
-	private Greenhouse.Status status(ModState.Site site) {
+	Greenhouse.Status status(ModState.Site site) {
 		long now = System.currentTimeMillis();
 		if (status == null || now - statusMs > 500 || !site.key().equals(statusSite)) {
 			status = site.greenhouse().status(8);
@@ -366,7 +347,7 @@ public final class CompanionScreen extends Screen {
 		return status;
 	}
 
-	private void refresh() {
+	void refresh() {
 		status = null;
 	}
 
@@ -394,14 +375,14 @@ public final class CompanionScreen extends Screen {
 		g.fill(x, Theme.PAD + 24, x + contentW(), Theme.PAD + 25, Theme.BORDER);
 		switch (page) {
 			case OVERVIEW -> overview(g, mouseX, mouseY);
-			case FLOW -> flowPage(g, mouseX, mouseY);
+			case FLOW -> flow.render(g, mouseX, mouseY);
 			case IMPORT -> importPage(g, mouseX, mouseY);
-			case LEADERBOARD -> leaderboardPage(g, mouseX, mouseY);
+			case LEADERBOARD -> leaderboard.render(g, mouseX, mouseY);
 			case DROPS -> DropsPanel.render(g, font, contentX(), contentTop(), Math.min(contentW(), 560), height - contentTop() - Theme.PAD, mouseX, mouseY,
 					(hx, hy, hw, hh, action) -> addHotspot(new Hotspot(hx, hy, hw, hh, event -> action.run())), true);
 			case INVENTORY -> inventoryPage(g, mouseX, mouseY);
 			case STAGES -> stagesPage(g, mouseX, mouseY);
-			case SETTINGS -> settingsPage(g, mouseX, mouseY);
+			case SETTINGS -> settingsPage.render(g, mouseX, mouseY);
 		}
 		super.extractRenderState(g, mouseX, mouseY, delta);
 		menuHotspots.clear();
@@ -478,7 +459,7 @@ public final class CompanionScreen extends Screen {
 				profileMenu = false;
 				renamingProfile = false;
 				siteKey = null;
-				selectedStep = null;
+				flow.followCurrentStep();
 				refresh();
 				rebuildWidgets();
 			}));
@@ -497,7 +478,7 @@ public final class CompanionScreen extends Screen {
 		bx += smallButton(g, mouseX, mouseY, "+ New profile", bx, cy + 2, Theme.accent(), () -> {
 			state().view(state().createProfile(""));
 			siteKey = null;
-			selectedStep = null;
+			flow.followCurrentStep();
 			renamingProfile = true;
 			refresh();
 			rebuildWidgets();
@@ -512,7 +493,7 @@ public final class CompanionScreen extends Screen {
 			smallButton(g, mouseX, mouseY, label, bx, cy + 2, Theme.DANGER, () -> confirmed("profile", () -> {
 				state().deleteProfile(shown);
 				siteKey = null;
-				selectedStep = null;
+				flow.followCurrentStep();
 				refresh();
 				rebuildWidgets();
 			}));
@@ -703,7 +684,7 @@ public final class CompanionScreen extends Screen {
 		int buttonX = x + w - 8;
 		buttonX -= button(g, mouseX, mouseY, "Open", buttonX - (font.width("Open") + 12), y + h - 22, Theme.accent(), () -> {
 			siteKey = site.key();
-			selectedStep = null;
+			flow.followCurrentStep();
 			refresh();
 			go(Page.FLOW);
 		}) + 4;
@@ -751,469 +732,6 @@ public final class CompanionScreen extends Screen {
 		list.add(hotspot);
 	}
 
-	// Flow page
-
-	private void flowPage(GuiGraphicsExtractor g, int mouseX, int mouseY) {
-		ModState.Site site = site();
-		int top = contentTop();
-		int x = contentX();
-		int w = contentW();
-		int leftWidth = Math.min(150, Math.max(116, w / 5));
-		int rightWidth = Math.min(190, Math.max(136, w / 4));
-		int right = x + w - rightWidth;
-		int center = x + leftWidth + Theme.GAP;
-		int centerWidth = right - Theme.GAP - center;
-
-		Theme.card(g, x, top, leftWidth, height - top - Theme.PAD, Theme.glass(Theme.SURFACE), Theme.BORDER);
-		Theme.card(g, right, top, rightWidth, height - top - Theme.PAD, Theme.glass(Theme.SURFACE), Theme.BORDER);
-		if (site == null) {
-			g.textWithWordWrap(font, Component.literal("Walk into one of your greenhouses in the Garden. Each greenhouse you visit shows up here."),
-					center, top + 4, centerWidth, Theme.MUTED, false);
-			return;
-		}
-		Greenhouse.Status status = status(site);
-		FlowRunner runner = status.runner();
-		int shown = selectedStep != null && runner != null && selectedStep < runner.plot().steps().size() ? selectedStep : runner == null ? -1 : runner.stepIndex();
-		stepList(g, mouseX, mouseY, site, status, x, top, leftWidth, shown);
-		gridPanel(g, mouseX, mouseY, site, status, center, top, centerWidth, shown);
-		exitPanel(g, mouseX, mouseY, site, status, right, top, rightWidth, shown);
-	}
-
-	private void stepList(GuiGraphicsExtractor g, int mouseX, int mouseY, ModState.Site site, Greenhouse.Status status, int x, int y, int w, int shown) {
-		List<ModState.Site> sites = sites();
-		int rowY = y + 7;
-		g.text(font, "◀", x + 6, rowY, sites.size() > 1 ? Theme.TEXT : Theme.FAINT, false);
-		g.text(font, "▶", x + w - 12, rowY, sites.size() > 1 ? Theme.TEXT : Theme.FAINT, false);
-		addHotspot(new Hotspot(x + 2, rowY - 2, 14, 12, event -> moveSite(-1)));
-		addHotspot(new Hotspot(x + w - 16, rowY - 2, 14, 12, event -> moveSite(1)));
-		String name = Theme.fit(font, site.name(), w - 36);
-		g.text(font, name, x + (w - font.width(name)) / 2, rowY, site.equals(GreenhouseCompanion.currentSite()) ? Theme.accent() : Theme.TEXT, false);
-
-		// Which flow plot it follows: click to cycle (right-click backwards)
-		Flows flows = state().flows(site);
-		ModState.Assignment assignment = state().assignment(site);
-		String follows = flows == null ? "Import flows first" : assignment == null ? "Follow: none" : "Follow: plot " + assignment.plotId() + (assignment.auto() ? " (auto)" : "");
-		int pillY = rowY + 14;
-		boolean hovered = mouseX >= x + 6 && mouseX < x + w - 6 && mouseY >= pillY && mouseY < pillY + 14;
-		Theme.card(g, x + 6, pillY, w - 12, 14, hovered ? Theme.CARD_HOVER : Theme.CARD, assignment == null ? Theme.BORDER : Theme.alpha(Theme.accent(), 0x99));
-		g.text(font, Theme.fit(font, follows, w - 24), x + 12, pillY + 3, assignment == null ? Theme.MUTED : Theme.accent(), false);
-		if (flows != null) {
-			addHotspot(new Hotspot(x + 6, pillY, w - 12, 14, event -> {
-				List<Flows.Plot> plots = flows.plots();
-				int index = -1;
-				for (int i = 0; i < plots.size(); i++) if (assignment != null && plots.get(i).id() == assignment.plotId()) index = i;
-				int next = event.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT ? index - 1 : index + 1;
-				state().assign(site, next < 0 || next >= plots.size() ? null : plots.get(next).id(), false);
-				state().setNote(site, "Picked by you");
-				dev.ilyapple.ghc.mod.render.LayoutOverlay.clear();
-				selectedStep = null;
-				refresh();
-			}));
-		}
-
-		int listTop = pillY + 22;
-		Theme.small(g, font, "STEPS", x + 8, listTop - 6, Theme.FAINT);
-		FlowRunner runner = status.runner();
-		if (runner == null) {
-			g.textWithWordWrap(font, Component.literal(flows == null
-					? "Import a SkyShards simulator export on the Flows page."
-					: "Click Follow to pick which plot of the flow this greenhouse runs."), x + 8, listTop + 2, w - 16, Theme.MUTED, false);
-			return;
-		}
-
-		Map<Integer, double[]> timing = new HashMap<>();
-		double cumulative = 0;
-		for (Estimator.StepEstimate estimate : status.plan()) {
-			if (!timing.containsKey(estimate.stepIndex())) timing.put(estimate.stepIndex(), new double[] {cumulative, estimate.cycles()});
-			cumulative += estimate.cycles();
-		}
-		long period = state().clock(site.server()).periodMs();
-
-		List<Flows.Step> steps = runner.plot().steps();
-		int cardHeight = 30;
-		int bottom = height - Theme.PAD - 1;
-		int visible = Math.max(1, (bottom - listTop) / (cardHeight + 4));
-		stepScroll = Math.max(0, Math.min(stepScroll, Math.max(0, steps.size() - visible)));
-		g.enableScissor(x + 1, listTop, x + w - 1, bottom);
-		for (int i = stepScroll; i < steps.size(); i++) {
-			int cy = listTop + (i - stepScroll) * (cardHeight + 4);
-			if (cy > height) break;
-			Flows.Step step = steps.get(i);
-			boolean current = i == runner.stepIndex();
-			boolean selected = i == shown;
-			boolean over = mouseX >= x + 6 && mouseX < x + w - 6 && mouseY >= cy && mouseY < cy + cardHeight;
-			Theme.card(g, x + 6, cy, w - 12, cardHeight, over ? Theme.CARD_HOVER : Theme.CARD,
-					selected ? Theme.WARNING : current ? Theme.alpha(Theme.accent(), 0xAA) : Theme.BORDER);
-			Theme.rounded(g, x + 10, cy + 5, 12, 12, current ? Theme.alpha(Theme.accent(), 0x55) : Theme.BORDER);
-			String number = Integer.toString(i + 1);
-			g.text(font, number, x + 16 - font.width(number) / 2, cy + 7, current ? Theme.accent() : Theme.TEXT, false);
-			g.text(font, Theme.fit(font, step.label(), w - 40), x + 26, cy + 5, Theme.TEXT_BRIGHT, false);
-
-			String line;
-			int color;
-			double[] time = timing.get(i);
-			if (current && runner.finished()) {
-				line = "Finished";
-				color = Theme.SUCCESS;
-			} else if (current) {
-				line = status.swapPending() ? "Swap to this layout" : "Now" + (time != null && Double.isFinite(time[1]) ? " · ~" + duration(time[1], period) + " left" : "");
-				color = status.swapPending() ? Theme.WARNING : Theme.accent();
-			} else if (time != null) {
-				line = Double.isFinite(time[0]) ? "In ~" + duration(time[0], period) + (Double.isFinite(time[1]) ? " · ~" + duration(time[1], period) : "") : "Later";
-				color = Theme.WARNING;
-			} else {
-				line = step.exits().isEmpty() ? "No exit" : "—";
-				color = Theme.FAINT;
-			}
-			g.text(font, Theme.fit(font, line, w - 40), x + 26, cy + 17, color, false);
-			int index = i;
-			addHotspot(new Hotspot(x + 6, Math.max(cy, listTop), w - 12, cardHeight, event -> selectedStep = index));
-		}
-		g.disableScissor();
-	}
-
-	private void gridPanel(GuiGraphicsExtractor g, int mouseX, int mouseY, ModState.Site site, Greenhouse.Status status, int x, int y, int w, int shown) {
-		FlowRunner runner = status.runner();
-		Flows.Step step = runner == null || shown < 0 ? null : runner.plot().steps().get(shown);
-		boolean isCurrent = runner != null && shown == runner.stepIndex();
-		boolean showLive = live && (isCurrent || step == null);
-
-		String title = step == null ? "What's growing" : step.label() + (isCurrent ? "" : "  (preview)");
-		if (w > 110) g.text(font, Theme.fit(font, title, w - 100), x, y + 3, Theme.TEXT_BRIGHT, false);
-		int px = x + w;
-		for (String label : new String[] {"Live", "Layout"}) {
-			int pw = font.width(label) + 12;
-			px -= pw;
-			boolean activePill = label.equals("Live") == showLive;
-			boolean enabled = label.equals("Layout") ? step != null : isCurrent || step == null;
-			boolean over = mouseX >= px && mouseX < px + pw && mouseY >= y && mouseY < y + 14;
-			int accent = label.equals("Live") ? Theme.accent() : Theme.WARNING;
-			Theme.card(g, px, y, pw, 14, activePill ? Theme.alpha(accent, 0x33) : over && enabled ? Theme.CARD_HOVER : Theme.CARD,
-					activePill ? Theme.alpha(accent, 0x99) : Theme.BORDER);
-			g.text(font, label, px + 6, y + 3, activePill ? accent : enabled ? Theme.TEXT : Theme.FAINT, false);
-			if (enabled) {
-				boolean wantLive = label.equals("Live");
-				addHotspot(new Hotspot(px, y, pw, 14, event -> live = wantLive));
-			}
-			px -= 4;
-		}
-
-		int gridTop = y + 20;
-		if (status.swapPending() && step != null && isCurrent) {
-			Theme.card(g, x, gridTop, w, 16, Theme.alpha(Theme.WARNING, 0x33), Theme.alpha(Theme.WARNING, 0x66));
-			g.text(font, Theme.fit(font, "Swap this greenhouse to " + step.label() + ", then press Swapped", w - 8), x + 4, gridTop + 4, Theme.WARNING, false);
-			gridTop += 20;
-		}
-		int cell = Math.max(6, Math.min(28, Math.min(w, height - gridTop - 22) / 10));
-		int size = cell * 10;
-		int gx = x + (w - size) / 2;
-		int gy = gridTop;
-
-		// Turned the way this greenhouse is planted, so it lines up with what grows there
-		Schematic drawn = step == null ? null : step.schematic();
-		Schematic layout = drawn == null ? null : drawn.rotated(site == null ? 0 : site.greenhouse().rotation());
-		Census census = status.census();
-		Plants plants = state().plants();
-
-		g.fill(gx - 1, gy - 1, gx + size + 1, gy + size + 1, Theme.BORDER_STRONG);
-		for (int cx = 0; cx < 10; cx++) {
-			for (int cz = 0; cz < 10; cz++) {
-				int sx = gx + cx * cell;
-				int sy = gy + cz * cell;
-				g.fill(sx, sy, sx + cell, sy + cell, Theme.CARD);
-				String ground = groundAt(layout, census, plants, cx, cz, showLive);
-				if (ground != null) Theme.groundTile(g, ground, sx, sy, cell, showLive ? 150 : 210);
-				g.outline(sx, sy, cell, cell, 0x400F172A);
-			}
-		}
-
-		if (layout != null) {
-			int placementAlpha = showLive ? 70 : 255;
-			for (Map.Entry<Integer, Integer> placement : layout.placements().entrySet()) drawCrop(g, placement.getValue(), placement.getKey(), gx, gy, cell, placementAlpha);
-			for (Map.Entry<Integer, Integer> target : layout.targets().entrySet()) {
-				int anchor = target.getKey();
-				int span = SkyblockerCrops.sizeOf(target.getValue()) * cell;
-				int sx = gx + anchor / 10 * cell;
-				int sy = gy + anchor % 10 * cell;
-				boolean filled = showLive && census.targetFilled(anchor, target.getValue());
-				if (!filled) drawCrop(g, target.getValue(), anchor, gx, gy, cell, showLive ? 60 : 110);
-				g.outline(sx + 1, sy + 1, span - 2, span - 2, filled ? Theme.SUCCESS : Theme.WARNING);
-			}
-		}
-
-		if (showLive) {
-			for (Census.Plant plant : census.plants()) {
-				int anchor = plant.cells().stream().min(Comparator.comparingInt((Integer c) -> c / 10).thenComparingInt(c -> c % 10)).orElse(-1);
-				if (anchor < 0) continue;
-				int span = Math.min(plant.kind().size(), 10 - anchor / 10) * cell;
-				int sx = gx + anchor / 10 * cell;
-				int sy = gy + anchor % 10 * cell;
-				Theme.cropIcon(g, plant.id(), sx + 1, sy + 1, span - 2, 255);
-				if (plant.kind().grows()) {
-					String stage = stageLabel(plant.stages(), (span - 2) * 2);
-					int labelColor = plant.exact() ? Theme.TEXT_BRIGHT : plant.lookKnown() ? Theme.WARNING : Theme.DANGER;
-					int tw = font.width(stage) / 2;
-					g.fill(sx + span - tw - 3, sy + span - 6, sx + span - 1, sy + span - 1, 0xC00F172A);
-					Theme.small(g, font, stage, sx + span - tw - 2, sy + span - 5, labelColor);
-				}
-			}
-			if (layout != null) {
-				// The same verdicts as the red boxes in the greenhouse (soil isn't known here)
-				for (dev.ilyapple.ghc.core.overlay.PlotOverlay.Mark mark : dev.ilyapple.ghc.core.overlay.PlotOverlay.plan(layout, census, plants, c -> null, java.util.Set.of(),
-						new dev.ilyapple.ghc.core.overlay.PlotOverlay.Options(settings().devourerRingOnlyWhenNeeded))) {
-					if (!mark.action().problem()) continue;
-					int span = mark.size() * cell;
-					g.outline(gx + mark.anchor() / 10 * cell, gy + mark.anchor() % 10 * cell, span, span, mark.action().color());
-				}
-			}
-		}
-
-		if (mouseX >= gx && mouseX < gx + size && mouseY >= gy && mouseY < gy + size) {
-			int hx = (mouseX - gx) / cell;
-			int hz = (mouseY - gy) / cell;
-			List<Component> lines = cellTooltip(layout, census, hx, hz, showLive);
-			if (!lines.isEmpty()) tooltip(g, lines, mouseX, mouseY);
-		}
-
-		int ly = gy + size + 6;
-		if (showLive) {
-			String[] legend = {"Stage: white exact, amber a range, red look not on record", "Box: + place blue, ✘ remove red, ⊘ clear orange (as in the greenhouse)", "Ring: spawn spot (green once filled)"};
-			for (int i = 0; i < legend.length; i++) Theme.small(g, font, Theme.fit(font, legend[i], w * 2), x, ly + i * 6, Theme.MUTED);
-		} else if (layout != null) {
-			StringBuilder needs = new StringBuilder("Places ");
-			layout.inputCounts().forEach((id, count) -> needs.append(count).append("x ").append(name(id)).append("  "));
-			Theme.small(g, font, Theme.fit(font, needs.toString(), w * 2), x, ly, Theme.MUTED);
-			StringBuilder wants = new StringBuilder("Targets ");
-			layout.targetCounts().forEach((id, count) -> wants.append(count).append("x ").append(name(id)).append("  "));
-			Theme.small(g, font, Theme.fit(font, wants.toString(), w * 2), x, ly + 6, Theme.WARNING);
-		}
-	}
-
-	private @Nullable String groundAt(@Nullable Schematic layout, Census census, Plants plants, int x, int z, boolean showLive) {
-		if (showLive) {
-			StageTracker.Tracked there = census.cell(Schematic.cell(x, z));
-			if (there != null) return there.plant().ground();
-		}
-		if (layout == null) return null;
-		int id = layout.at(x, z);
-		if (id > 0) {
-			SkyblockerCrops.Crop crop = SkyblockerCrops.byId(id);
-			Plants.Plant plant = crop == null || crop.simId() == null ? null : plants.byId(crop.simId());
-			return plant == null ? null : plant.ground();
-		}
-		if (id == 0) {
-			for (Map.Entry<Integer, Integer> target : layout.targets().entrySet()) {
-				SkyblockerCrops.Crop crop = SkyblockerCrops.byId(target.getValue());
-				int ax = target.getKey() / 10;
-				int az = target.getKey() % 10;
-				int span = crop == null ? 1 : crop.size();
-				if (x >= ax && x < ax + span && z >= az && z < az + span && crop != null && crop.simId() != null) {
-					Plants.Plant plant = plants.byId(crop.simId());
-					return plant == null ? null : plant.ground();
-				}
-			}
-		}
-		return null;
-	}
-
-	private void drawCrop(GuiGraphicsExtractor g, int cropId, int anchor, int gx, int gy, int cell, int alpha) {
-		SkyblockerCrops.Crop crop = SkyblockerCrops.byId(cropId);
-		if (crop == null || crop.simId() == null) return;
-		int span = Math.min(crop.size(), 10 - anchor / 10) * cell;
-		Theme.cropIcon(g, crop.simId(), gx + anchor / 10 * cell + 1, gy + anchor % 10 * cell + 1, span - 2, alpha);
-	}
-
-	private List<Component> cellTooltip(@Nullable Schematic layout, Census census, int x, int z, boolean showLive) {
-		List<Component> lines = new ArrayList<>();
-		StageTracker.Tracked there = census.cell(Schematic.cell(x, z));
-		if (showLive && there != null) {
-			Plants.Plant plant = there.plant();
-			lines.add(Component.literal(plant.name()).withColor(Theme.TEXT_BRIGHT));
-			if (plant.grows()) {
-				lines.add(Component.literal("Stage " + there.stages() + " of " + plant.maxStage() + (there.exact() ? "" : "  (not exact)"))
-						.withColor(there.exact() ? Theme.SUCCESS : Theme.WARNING));
-				lines.add(Component.literal("Fully grown at " + plant.readyStage()).withColor(Theme.MUTED));
-			}
-			lines.add(Component.literal(switch (there.origin()) {
-				case SPAWNED -> "Spawned here";
-				case PLACED -> "Placed by you";
-				case PLANTED -> "Planted by you";
-				case UNKNOWN -> "Already here when first seen";
-			}).withColor(Theme.MUTED));
-			if (!there.lookKnown()) lines.add(Component.literal("This look isn't on record yet (Stages page)").withColor(Theme.DANGER));
-			if (there.mayStall()) lines.add(Component.literal("It missed a tick: dry or wilting?").withColor(Theme.WARNING));
-		}
-		if (layout != null) {
-			int id = layout.at(x, z);
-			if (id > 0) {
-				SkyblockerCrops.Crop crop = SkyblockerCrops.byId(id);
-				if (crop != null) lines.add(Component.literal("Layout: " + name(crop.simId() == null ? crop.name() : crop.simId())).withColor(Theme.INFO));
-			} else if (id == 0) {
-				lines.add(Component.literal("Layout: spawn spot").withColor(Theme.WARNING));
-			}
-		}
-		lines.add(Component.literal("Cell " + x + ", " + z).withColor(Theme.FAINT));
-		return lines;
-	}
-
-	private void exitPanel(GuiGraphicsExtractor g, int mouseX, int mouseY, ModState.Site site, Greenhouse.Status status, int x, int y, int w, int shown) {
-		int cy = y + 6;
-		int textWidth = w - 16;
-		FlowRunner runner = status.runner();
-		int buttonsY = height - Theme.PAD - 22;
-		String note = state().note(site);
-		int noteTop = buttonsY - 4;
-		if (note != null) {
-			noteTop -= font.split(Component.literal(note), textWidth).size() * (font.lineHeight + 1) + 2;
-			wrap(g, note, x + 8, noteTop, textWidth, Theme.MUTED);
-		}
-		for (AmountField field : amountBoxes.values()) field.box().visible = false;
-		if (runner == null) return;
-		g.enableScissor(x + 1, y + 1, x + w - 1, noteTop - 3);
-		Flows.Step step = runner.plot().steps().get(Math.max(0, shown));
-		boolean isCurrent = shown == runner.stepIndex();
-		Theme.small(g, font, isCurrent ? "LEAVE THIS STEP WHEN" : "THIS STEP ENDS WHEN", x + 8, cy, Theme.FAINT);
-		cy += 8;
-		if (step.exits().isEmpty()) cy = wrap(g, "No exit: the plot stays on this step.", x + 8, cy, textWidth, Theme.MUTED);
-		for (int i = 0; i < step.exits().size(); i++) {
-			Flows.Exit exit = step.exits().get(i);
-			String to = exit.to() == null ? (shown == runner.plot().steps().size() - 1 && !runner.plot().loop() ? "finish" : "next step")
-					: label(runner.plot(), exit.to());
-			boolean fires = isCurrent && status.decision() != null && status.decision().exitIndex() == i;
-			cy = wrap(g, "→ " + to + (exit.any() ? "  (any of)" : ""), x + 8, cy, textWidth, fires ? Theme.SUCCESS : Theme.INFO);
-			if (isCurrent && i < status.verdicts().size()) {
-				List<ExitEvaluator.Verdict> verdicts = status.verdicts().get(i);
-				for (int j = 0; j < verdicts.size(); j++) {
-					ExitEvaluator.Verdict verdict = verdicts.get(j);
-					int color = !verdict.supported() ? Theme.FAINT : verdict.value() ? Theme.SUCCESS : Theme.TEXT;
-					cy = wrap(g, (verdict.value() ? "✔ " : "✘ ") + verdict.text(), x + 12, cy, textWidth - 4, color);
-					cy = wrap(g, verdict.detail(), x + 22, cy, textWidth - 14, Theme.MUTED);
-					if (verdict.assumed()) cy = wrap(g, "≈ " + (verdict.value() ? "taken as met" : "taken as not met") + " at the end of the range", x + 22, cy, textWidth - 14, Theme.WARNING);
-					if (j < exit.when().size()) cy = amountRow(g, mouseX, mouseY, i, j, exit.when().get(j), x + 22, cy, noteTop - 3);
-				}
-			} else {
-				for (int j = 0; j < exit.when().size(); j++) {
-					Flows.Condition condition = exit.when().get(j);
-					cy = wrap(g, "• " + describe(condition), x + 12, cy, textWidth - 4, Theme.TEXT);
-					cy = amountRow(g, mouseX, mouseY, i, j, condition, x + 22, cy, noteTop - 3);
-				}
-			}
-			cy += 4;
-		}
-
-		cy += 2;
-		g.fill(x + 8, cy, x + w - 8, cy + 1, Theme.BORDER);
-		cy += 5;
-		Theme.small(g, font, "ESTIMATE", x + 8, cy, Theme.FAINT);
-		cy += 8;
-		long period = state().clock(site.server()).periodMs();
-		double total = 0;
-		int shownSteps = 0;
-		for (Estimator.StepEstimate estimate : status.plan()) {
-			if (shownSteps++ >= 5) break;
-			String what = shownSteps == 1 ? "This step" : estimate.label();
-			if (!estimate.known()) {
-				cy = wrap(g, what + ": can't tell (" + estimate.reason() + ")", x + 8, cy, textWidth, Theme.MUTED);
-				break;
-			}
-			total += estimate.cycles();
-			String line = what + ": ~" + duration(estimate.cycles(), period) + (shownSteps == 1 ? " left" : "") + "  · ends in ~" + duration(total, period);
-			cy = wrap(g, line, x + 8, cy, textWidth, shownSteps == 1 ? Theme.accent() : Theme.TEXT);
-		}
-		g.disableScissor();
-
-		int bx = x + 6;
-		if (status.swapPending() && isCurrent) bx += button(g, mouseX, mouseY, "Swapped ✔", bx, buttonsY, Theme.SUCCESS, () -> {
-			site.greenhouse().swapDone();
-			refresh();
-		}) + 4;
-		if (!isCurrent) bx += button(g, mouseX, mouseY, "Start here", bx, buttonsY, Theme.WARNING, () -> {
-			runner.enter(shown);
-			site.greenhouse().swapDone();
-			state().markDirty();
-			dev.ilyapple.ghc.mod.render.LayoutOverlay.clear();
-			refresh();
-		}) + 4;
-	}
-
-	/**
-	 * A typed amount under an exit condition that has one (stock, mutations spawned, harvested or grown, cycles): type
-	 * a number and press Enter (or click away), or use − / + (shift ×10, ctrl ×100). It changes the flows file of the
-	 * profile shown, keeping every greenhouse's step. Returns the y below the row.
-	 */
-	private int amountRow(GuiGraphicsExtractor g, int mouseX, int mouseY, int exitIndex, int conditionIndex, Flows.Condition condition, int x, int y, int bottom) {
-		String field = Flows.amountField(condition);
-		if (field == null) return y;
-		AmountField amount = amountBoxes.get(exitIndex + "/" + conditionIndex);
-		if (amount == null) return y;
-		String label = switch (field) {
-			case "qty" -> "Items";
-			case "n" -> "Cycles";
-			default -> "Mutations";
-		};
-		Theme.small(g, font, label, x, y + 4, Theme.FAINT);
-		int bx = x + 32;
-		boolean inView = y >= contentTop() && y + 13 <= bottom;
-		amount.box().setX(bx);
-		amount.box().setY(y);
-		amount.box().visible = inView;
-		if (inView) {
-			int value = amount.value();
-			stepper(g, mouseX, mouseY, "−", bx + 46, y, event -> setAmount(amount, value - step(event)));
-			stepper(g, mouseX, mouseY, "+", bx + 64, y, event -> setAmount(amount, value + step(event)));
-		}
-		return y + 17;
-	}
-
-	/** The step whose exits the Flow page shows for {@code site}: the one picked in the list, else the current one. */
-	private int shownStep(@Nullable FlowRunner runner) {
-		return selectedStep != null && runner != null && selectedStep < runner.plot().steps().size() ? selectedStep : runner == null ? -1 : runner.stepIndex();
-	}
-
-	/** What the amount boxes were made for: the greenhouse, the step shown and the flows text. */
-	private @Nullable String amountsFor() {
-		ModState.Site site = site();
-		if (site == null) return null;
-		FlowRunner runner = site.greenhouse().runner();
-		ModState.FlowFile file = state().activeFile();
-		return site.key() + "/" + shownStep(runner) + "/" + (file == null ? 0 : file.text().hashCode());
-	}
-
-	/** One box per exit condition with an amount, on the step the Flow page shows. */
-	private void buildAmountBoxes() {
-		amountsBuiltFor = amountsFor();
-		ModState.Site site = site();
-		FlowRunner runner = site == null ? null : site.greenhouse().runner();
-		int shown = shownStep(runner);
-		if (runner == null || shown < 0) return;
-		Flows.Step step = runner.plot().steps().get(shown);
-		for (int i = 0; i < step.exits().size(); i++) {
-			List<Flows.Condition> when = step.exits().get(i).when();
-			for (int j = 0; j < when.size(); j++) {
-				String field = Flows.amountField(when.get(j));
-				if (field == null) continue;
-				int value = when.get(j).integer(field, field.equals("count") ? 1 : 0);
-				EditBox box = new EditBox(font, 0, -100, 42, 13, Component.literal("Amount"));
-				box.setMaxLength(7);
-				box.setValue(Integer.toString(value));
-				box.visible = false;
-				addRenderableWidget(box);
-				amountBoxes.put(i + "/" + j, new AmountField(box, runner.plot().id(), step.id(), i, j, field, value));
-			}
-		}
-	}
-
-	private void setAmount(AmountField amount, int value) {
-		ModState.FlowFile file = state().activeFile();
-		if (file == null) return;
-		try {
-			state().editActiveFlow(Flows.withAmount(file.text(), amount.plotId(), amount.stepId(), amount.exitIndex(), amount.conditionIndex(), amount.field(), value));
-			refresh();
-		} catch (RuntimeException e) {
-			GreenhouseCompanion.LOGGER.warn("[GHC] Couldn't change the amount: {}", e.getMessage());
-		}
-	}
-
 	/** Applies typed amounts once their box loses focus, and makes new boxes when the step shown or the flows change. */
 	@Override
 	public void tick() {
@@ -1221,24 +739,7 @@ public final class CompanionScreen extends Screen {
 		// A typed inventory count is set when its box loses focus (Enter, or a click elsewhere)
 		if (page == Page.INVENTORY && countBox != null && !countBox.isFocused()) applyCount();
 		if (page != Page.FLOW) return;
-		boolean typing = false;
-		for (AmountField amount : amountBoxes.values()) {
-			if (amount.box().isFocused()) {
-				typing = true;
-				continue;
-			}
-			String digits = amount.box().getValue().replaceAll("[^0-9]", "");
-			if (digits.isEmpty()) {
-				amount.box().setValue(Integer.toString(amount.value()));
-				continue;
-			}
-			int typed = (int) Math.min(9_999_999L, Long.parseLong(digits));
-			if (typed == amount.value()) continue;
-			setAmount(amount, typed);
-			// Shown again from the flows: the new value once the boxes are rebuilt, the old one if it couldn't be changed
-			amount.box().setValue(Integer.toString(amount.value()));
-		}
-		if (!typing && !java.util.Objects.equals(amountsFor(), amountsBuiltFor)) rebuildWidgets();
+		flow.tick();
 	}
 
 	@Override
@@ -1269,360 +770,8 @@ public final class CompanionScreen extends Screen {
 				return true;
 			}
 		}
-		if (enter) {
-			for (AmountField amount : amountBoxes.values()) {
-				if (!amount.box().isFocused()) continue;
-				// Unfocused, the next tick applies it
-				setFocused(null);
-				amount.box().setFocused(false);
-				return true;
-			}
-		}
+		if (enter && flow.enter()) return true;
 		return super.keyPressed(event);
-	}
-
-	// Leaderboard
-	// Leaderboard
-
-	private static @Nullable Leaderboard board;
-	private static boolean boardLoaded;
-
-	/** The bundled leaderboard, read once. */
-	static @Nullable Leaderboard board() {
-		if (!boardLoaded) {
-			boardLoaded = true;
-			try (var in = CompanionScreen.class.getResourceAsStream("/assets/greenhouse-companion/leaderboard/leaderboard.json")) {
-				if (in != null) board = Leaderboard.read(in);
-			} catch (Exception e) {
-				GreenhouseCompanion.LOGGER.error("[GHC] Could not read the leaderboard", e);
-			}
-		}
-		return board;
-	}
-
-	private int pill(GuiGraphicsExtractor g, int mouseX, int mouseY, String label, int x, int y, boolean active, int accent, Runnable action) {
-		int pw = font.width(label) + 12;
-		boolean over = mouseX >= x && mouseX < x + pw && mouseY >= y && mouseY < y + 14;
-		Theme.card(g, x, y, pw, 14, active ? Theme.alpha(accent, 0x33) : over ? Theme.CARD_HOVER : Theme.CARD, active ? Theme.alpha(accent, 0x99) : Theme.BORDER);
-		g.text(font, label, x + 6, y + 3, active ? accent : Theme.TEXT, false);
-		addHotspot(new Hotspot(x, y, pw, 14, event -> action.run()));
-		return pw + 4;
-	}
-
-	private static String coins(double value) {
-		if (Math.abs(value) >= 1e6) return String.format(Locale.ROOT, "%.1fM", value / 1e6);
-		if (Math.abs(value) >= 1e3) return String.format(Locale.ROOT, "%.0fk", value / 1e3);
-		return String.format(Locale.ROOT, "%.0f", value);
-	}
-
-	private static String items(double value) {
-		return value >= 100 ? String.format(Locale.ROOT, "%.0f", value) : value >= 10 ? String.format(Locale.ROOT, "%.1f", value) : String.format(Locale.ROOT, "%.2f", value);
-	}
-
-	private static int rarityColor(String rarity) {
-		return switch (rarity) {
-			case "uncommon" -> 0xFF4ADE80;
-			case "rare" -> 0xFF60A5FA;
-			case "epic" -> 0xFFC084FC;
-			case "legendary" -> 0xFFFBBF24;
-			default -> Theme.TEXT;
-		};
-	}
-
-	private void leaderboardPage(GuiGraphicsExtractor g, int mouseX, int mouseY) {
-		int x = contentX();
-		int w = contentW();
-		int top = contentTop();
-		Leaderboard lb = board();
-		if (lb == null) {
-			wrap(g, "No leaderboard data in this build: its leaderboard.json is missing or unreadable.", x, top, w, Theme.MUTED);
-			return;
-		}
-		// Ironman: each mutation's tuned Ironman flow as simulated, measured against its profit share; Normal: inputs in stock
-		boolean ironman = boardMode != Leaderboard.Mode.NORMAL;
-		int px = x;
-		px += pill(g, mouseX, mouseY, "Ironman", px, top, ironman, Theme.accent(), () -> {
-			boardMode = Leaderboard.Mode.FLOW;
-			boardScroll = 0;
-		});
-		px += pill(g, mouseX, mouseY, "Normal", px, top, !ironman, Theme.accent(), () -> {
-			boardMode = Leaderboard.Mode.NORMAL;
-			if (boardSort == Leaderboard.Sort.UPTIME) boardSort = Leaderboard.Sort.COINS;
-			boardScroll = 0;
-		});
-		px += 10;
-		Theme.small(g, font, "SORT", px, top + 5, Theme.FAINT);
-		px += 20;
-		px += pill(g, mouseX, mouseY, "Coins", px, top, boardSort == Leaderboard.Sort.COINS, Theme.WARNING, () -> boardSort = Leaderboard.Sort.COINS);
-		px += pill(g, mouseX, mouseY, "Items", px, top, boardSort == Leaderboard.Sort.ITEMS, Theme.WARNING, () -> boardSort = Leaderboard.Sort.ITEMS);
-		if (ironman) px += pill(g, mouseX, mouseY, "Uptime", px, top, boardSort == Leaderboard.Sort.UPTIME, Theme.WARNING, () -> boardSort = Leaderboard.Sort.UPTIME);
-		px += 10;
-		px += pill(g, mouseX, mouseY, "3 plots", px, top, boardPlots == 3, Theme.INFO, () -> boardPlots = 3);
-		px += pill(g, mouseX, mouseY, "1 plot", px, top, boardPlots == 1, Theme.INFO, () -> boardPlots = 1);
-		// Harvest interval: online every N growth stages
-		String every = "Every " + boardInterval;
-		int ex = x + w - font.width(every) - 44;
-		stepper(g, mouseX, mouseY, "−", ex, top, event -> boardInterval = Math.max(1, boardInterval - 1));
-		g.text(font, every, ex + 20, top + 3, Theme.TEXT_BRIGHT, false);
-		stepper(g, mouseX, mouseY, "+", ex + 24 + font.width(every), top, event -> boardInterval = Math.min(14, boardInterval + 1));
-		if (mouseX >= ex && mouseX < x + w && mouseY >= top && mouseY < top + 14) {
-			tooltip(g, List.of(Component.literal("Harvest interval: you're online every " + boardInterval + " growth stage" + (boardInterval == 1 ? "" : "s"))), mouseX, mouseY);
-		}
-
-		int listTop = top + 22;
-		int listW = (int) (w * 0.56);
-		String plots = boardPlots == 3 ? "3 plots" : "1 plot";
-		String head = ironman ? "Ironman: each mutation's Ironman flow run from an empty inventory, " + plots + ", once it's running; uptime = main items a day"
-				+ " vs plots that always have their inputs, beside its profit share and how much of it the flow loses. NPC coins a day"
-				: "Normal: " + plots + " running full time with inputs in stock: NPC coins + mutations made − inputs used, mutations at Bazaar instant-sell (" + dev.ilyapple.ghc.mod.Prices.status() + ")";
-		Theme.small(g, font, Theme.fit(font, head, w * 2), x, listTop, Theme.MUTED);
-		Theme.small(g, font, Theme.fit(font, disclaimer(lb), w * 2), x, listTop + 7, Theme.FAINT);
-		listTop += 18;
-		dev.ilyapple.ghc.mod.Prices.refresh();
-		List<Leaderboard.Ranked> rows = lb.rank(boardMode, boardInterval, boardSort, "", CompanionScreen::inputPrice);
-		int rowH = 20;
-		int visible = Math.max(1, (height - listTop - Theme.PAD) / rowH);
-		boardScroll = Math.max(0, Math.min(boardScroll, Math.max(0, rows.size() - visible)));
-		if (boardSelected == null && !rows.isEmpty()) boardSelected = rows.getFirst().entry().mutation();
-		g.enableScissor(x, listTop, x + listW, height - Theme.PAD);
-		Leaderboard.Ranked chosen = null;
-		for (int i = 0; i < rows.size(); i++) {
-			Leaderboard.Ranked row = rows.get(i);
-			if (row.entry().mutation().equals(boardSelected)) chosen = row;
-			int vi = i - boardScroll;
-			if (vi < 0 || vi > visible) continue;
-			int ry = listTop + vi * rowH;
-			boolean selected = row.entry().mutation().equals(boardSelected);
-			boolean over = mouseX >= x && mouseX < x + listW && mouseY >= ry && mouseY < ry + rowH - 2;
-			Theme.card(g, x, ry, listW, rowH - 2, selected ? Theme.alpha(Theme.accent(), 0x22) : over ? Theme.CARD_HOVER : Theme.CARD,
-					selected ? Theme.alpha(Theme.accent(), 0x99) : Theme.BORDER);
-			int rankColor = row.rank() == 1 ? 0xFFFBBF24 : row.rank() == 2 ? 0xFFCBD5E1 : row.rank() == 3 ? 0xFFD97706 : Theme.MUTED;
-			g.text(font, "#" + row.rank(), x + 4, ry + 5, rankColor, false);
-			Theme.cropIcon(g, row.entry().mutation(), x + 26, ry + 2, 14, 255);
-			int valueW = ironman ? 190 : 92;
-			g.text(font, Theme.fit(font, row.entry().name(), listW - 44 - valueW), x + 44, ry + 5, rarityColor(row.entry().rarity()), false);
-			Leaderboard.Numbers numbers = row.numbers();
-			if (!numbers.possible()) {
-				Theme.small(g, font, ironman ? "never reaches its main step" : "an input nobody makes", x + listW - 80, ry + 7, Theme.DANGER);
-			} else {
-				String c = coins(numbers.coins() * boardPlots);
-				String it = items(numbers.made() * boardPlots) + "/d";
-				int cx = x + listW - 6 - font.width(c);
-				g.text(font, c, cx, ry + 5, boardSort == Leaderboard.Sort.COINS ? Theme.WARNING : Theme.TEXT, false);
-				int ix = cx - 8 - font.width(it);
-				g.text(font, it, ix, ry + 5, boardSort == Leaderboard.Sort.ITEMS ? Theme.WARNING : Theme.DIM, false);
-				if (ironman) {
-					// The flow's uptime, the profit share beside it, and the share of the profit share it loses
-					int ux = ix - 8;
-					Leaderboard.Sim sim = row.entry().sim(boardInterval);
-					if (sim != null && sim.lostVsProfitShare() != null) {
-						String lost = lostLabel(sim.lostVsProfitShare());
-						int lw = font.width(lost) / 2;
-						Theme.small(g, font, lost, ux - lw, ry + 7, lostColor(sim.lostVsProfitShare()));
-						ux -= lw + 5;
-					}
-					Leaderboard.Numbers formula = row.entry().at(Leaderboard.Mode.PROFIT_SHARE, boardInterval);
-					if (formula != null && formula.possible()) {
-						String of = "of " + Math.round(formula.uptime() * 100) + "%";
-						int ow = font.width(of) / 2;
-						Theme.small(g, font, of, ux - ow, ry + 7, Theme.FAINT);
-						ux -= ow + 4;
-					}
-					String up = Math.round(numbers.uptime() * 100) + "%";
-					g.text(font, up, ux - font.width(up), ry + 5, boardSort == Leaderboard.Sort.UPTIME ? Theme.WARNING : uptimeColor(numbers.uptime()), false);
-				}
-			}
-			String key = row.entry().mutation();
-			addHotspot(new Hotspot(x, Math.max(ry, listTop), listW, rowH - 2, event -> {
-				boardSelected = key;
-				boardDetailScroll = 0;
-				boardStatus = "";
-			}));
-		}
-		g.disableScissor();
-		if (chosen != null) boardDetail(g, mouseX, mouseY, chosen, x + listW + Theme.GAP, top + 22, w - listW - Theme.GAP);
-	}
-
-	/** "−3% lost", or "+1% over" when the simulation beat the formula (within its noise). */
-	private static String lostLabel(double lost) {
-		long pct = Math.round(lost * 100);
-		return pct > 0 ? "−" + pct + "% lost" : pct < 0 ? "+" + (-pct) + "% over" : "±0%";
-	}
-
-	private static int lostColor(double lost) {
-		return lost <= 0.02 ? Theme.SUCCESS : lost <= 0.10 ? Theme.WARNING : Theme.DANGER;
-	}
-
-	/** What the numbers assume: the player stats they were simulated with, and how many plots. */
-	private String disclaimer(Leaderboard lb) {
-		Map<String, String> stats = lb.stats();
-		String fortune = stats.getOrDefault("farmingFortune", "?");
-		if (fortune.endsWith(".0")) fortune = fortune.substring(0, fortune.length() - 2);
-		boolean ironman = boardMode != Leaderboard.Mode.NORMAL;
-		return "Simulated at Farming Fortune " + fortune + ", Overbloom " + stats.getOrDefault("overbloom", "?") + ", Crop Growth "
-				+ stats.getOrDefault("cropGrowth", "?") + " (wiki max), harvest every " + boardInterval + (ironman ? ", on 3 plots for 656 days" : ", on 1 plot")
-				+ " and shown for " + boardPlots + (boardPlots == 1 ? " plot" : " plots") + "; your numbers scale with your own stats";
-	}
-
-	private static int uptimeColor(double uptime) {
-		return uptime >= 0.8 ? Theme.SUCCESS : uptime >= 0.4 ? Theme.WARNING : Theme.DANGER;
-	}
-
-	private void boardDetail(GuiGraphicsExtractor g, int mouseX, int mouseY, Leaderboard.Ranked row, int x, int y, int w) {
-		Leaderboard.Entry e = row.entry();
-		boolean ironman = boardMode != Leaderboard.Mode.NORMAL;
-		int bottom = height - Theme.PAD;
-		Theme.card(g, x, y, w, bottom - y, Theme.glass(Theme.SURFACE), Theme.BORDER);
-		int buttonsY = bottom - Theme.BUTTON_H - 6;
-		g.enableScissor(x + 1, y + 1, x + w - 1, buttonsY - 4);
-		int cy = y + 8 - boardDetailScroll;
-		int tx = x + 8;
-		int tw = w - 16;
-		Theme.cropIcon(g, e.mutation(), tx, cy, 16, 255);
-		g.text(font, Theme.fit(font, "#" + row.rank() + "  " + e.name(), tw - 20), tx + 20, cy + 4, rarityColor(e.rarity()), false);
-		cy += 22;
-		String plots = boardPlots == 3 ? "3 plots" : "1 plot";
-		if (ironman) {
-			cy = ironmanDetail(g, e, tx, cy, tw, plots);
-		} else {
-			Leaderboard.Numbers normal = e.at(Leaderboard.Mode.NORMAL, boardInterval);
-			Theme.small(g, font, "EVERY " + boardInterval + " · NORMAL · " + plots.toUpperCase(Locale.ROOT) + ", INPUTS IN STOCK", tx, cy, Theme.FAINT);
-			cy += 8;
-			if (normal != null) {
-				cy = wrap(g, items(normal.made() * boardPlots) + " " + e.name() + " a day, " + coins(normal.coins() * boardPlots) + " NPC coins a day", tx, cy, tw, Theme.TEXT);
-				List<String> unpriced = new ArrayList<>();
-				if (inputPrice(e.mutation()) <= 0) unpriced.add(e.name());
-				if (!normal.makes().isEmpty()) cy = wrap(g, "Also makes a day: " + itemList(normal.makes(), unpriced), tx, cy, tw, Theme.MUTED);
-				if (!normal.uses().isEmpty()) cy = wrap(g, "Uses a day: " + itemList(normal.uses(), unpriced), tx, cy, tw, Theme.MUTED);
-				double made = normal.madeWorth(e.mutation(), CompanionScreen::inputPrice) * boardPlots;
-				double cost = normal.inputCost(CompanionScreen::inputPrice) * boardPlots;
-				cy = wrap(g, "At Bazaar: +" + coins(made) + " mutations made" + (cost > 0 ? ", −" + coins(cost) + " inputs" : "") + " → profit "
-						+ coins(normal.profit(e.mutation(), CompanionScreen::inputPrice) * boardPlots) + " a day", tx, cy, tw, Theme.WARNING);
-				if (!unpriced.isEmpty()) cy = wrap(g, "No Bazaar price yet for " + String.join(", ", unpriced) + " (counted as 0)", tx, cy, tw, Theme.FAINT);
-			}
-			cy = wrap(g, "The normal flow puts this layout on all 3 plots, with nothing else: your inputs come from stock.", tx, cy + 2, tw, Theme.MUTED);
-			if (e.fillCells() > 0) cy = filledNote(g, e, tx, cy + 2, tw);
-		}
-		g.disableScissor();
-
-		// Each board adds its own flow: the Ironman board the Ironman flow, the Normal board the normal one
-		int bx = x + 8;
-		if (e.layout() != null) bx += button(g, mouseX, mouseY, "Copy link", bx, buttonsY, Theme.INFO, () -> {
-			Minecraft.getInstance().keyboardHandler.setClipboard("https://greenhouse.skyshards.com/designer?layout=" + e.layout());
-			boardStatus = "Designer link copied";
-		}) + 4;
-		if (ironman && e.ironmanFlow() != null) bx += button(g, mouseX, mouseY, "Add Ironman flow", bx, buttonsY, Theme.SUCCESS, () -> {
-			try {
-				state().addToLibrary(e.ironmanFlow(), "Ironman: " + e.name());
-				boardStatus = "Added to Flows as \"Ironman: " + e.name() + "\"";
-			} catch (RuntimeException ex) {
-				boardStatus = "Couldn't add it: " + ex.getMessage();
-			}
-		}) + 4;
-		if (!ironman && e.normalFlow() != null) bx += button(g, mouseX, mouseY, "Add normal flow", bx, buttonsY, Theme.SUCCESS, () -> {
-			try {
-				state().addToLibrary(e.normalFlow(), "Normal: " + e.name());
-				boardStatus = "Added to Flows as \"Normal: " + e.name() + "\"";
-			} catch (RuntimeException ex) {
-				boardStatus = "Couldn't add it: " + ex.getMessage();
-			}
-		}) + 4;
-		if (!boardStatus.isEmpty()) Theme.small(g, font, Theme.fit(font, boardStatus, (x + w - bx - 6) * 2), bx + 2, buttonsY + 6, Theme.SUCCESS);
-	}
-
-	/** The Ironman board's detail: the simulated flow at this interval, what it loses, then the profit share it's measured against. */
-	private int ironmanDetail(GuiGraphicsExtractor g, Leaderboard.Entry e, int tx, int cy, int tw, String plots) {
-		Leaderboard.Sim sim = e.sim(boardInterval);
-		Leaderboard.Numbers flow = e.at(Leaderboard.Mode.FLOW, boardInterval);
-		Leaderboard.Numbers share = e.at(Leaderboard.Mode.PROFIT_SHARE, boardInterval);
-		Theme.small(g, font, "EVERY " + boardInterval + " · IRONMAN FLOW · FROM AN EMPTY INVENTORY", tx, cy, Theme.FAINT);
-		cy += 8;
-		if (sim == null || flow == null) {
-			cy = wrap(g, "Not simulated at this interval.", tx, cy, tw, Theme.MUTED);
-		} else if (sim.daysToMain() == null) {
-			cy = wrap(g, "Never reached its main step in " + Math.round(sim.days()) + " days.", tx, cy, tw, Theme.DANGER);
-		} else {
-			cy = wrap(g, items(flow.made() * boardPlots) + " " + e.name() + " and " + coins(flow.coins() * boardPlots) + " NPC coins a day from " + plots
-					+ " once it's running: " + Math.round(flow.uptime() * 100) + "% uptime.", tx, cy, tw, Theme.TEXT);
-			if (sim.lostVsProfitShare() != null && share != null && share.possible()) {
-				double lost = sim.lostVsProfitShare();
-				String text = lost > 0.005 ? "Loses " + String.format(Locale.ROOT, "%.1f%%", lost * 100) + " of the profit share (" + items(share.made() * boardPlots)
-						+ " a day by the formula, " + Math.round(share.uptime() * 100) + "% uptime): plots regrow after swaps and stock runs out before the plots notice."
-						: lost < -0.005 ? "Makes " + String.format(Locale.ROOT, "%.1f%%", -lost * 100) + " more than the profit share (" + items(share.made() * boardPlots)
-						+ " a day by the formula): within the simulation's noise, it loses nothing."
-						: "Matches the profit share (" + items(share.made() * boardPlots) + " a day by the formula).";
-				cy = wrap(g, text, tx, cy + 2, tw, lostColor(lost));
-			}
-			String first = "Main step after " + String.format(Locale.ROOT, "%.1f", sim.daysToMain()) + " days from nothing";
-			String swaps = sim.swapsPerPlotDay() == null ? "" : sim.swapsPerPlotDay() < 0.005 ? ", then no swaps" : ", then a swap every " + swapEvery(sim.swapsPerPlotDay()) + " per plot";
-			cy = wrap(g, first + swaps + " (simulated " + Math.round(sim.days()) + " days, online every " + boardInterval + ").", tx, cy + 2, tw, Theme.DIM);
-		}
-		if (e.ironmanFlow() != null && !e.targets().isEmpty()) {
-			cy += 4;
-			String round = e.roundDays() <= 0 ? "about two days" : (e.roundDays() == Math.rint(e.roundDays()) ? Integer.toString((int) e.roundDays()) : Double.toString(e.roundDays()))
-					+ (e.roundDays() == 1 ? " day" : " days");
-			String roles = switch (e.dedicated()) {
-				case 1 -> " Plot 1 stays on the main step once it runs (its layout never regrows); plots 2 and 3 make the inputs and run the main step in between.";
-				case 2 -> " Plots 1 and 2 stay on the main step once it runs (their layouts never regrow); plot 3 makes the inputs and runs the main step in between.";
-				default -> " All 3 plots run it.";
-			};
-			cy = wrap(g, "Each plot first makes the inputs, deepest first; each step ends once the stock is enough for " + round + " of the main"
-					+ " plot (inventory rule), and the main step goes back when an input runs low." + roles + " Plot roles and round length are tuned"
-					+ " so layouts grow as long as they can without a swap.", tx, cy, tw, Theme.MUTED);
-			for (Leaderboard.Target target : e.targets()) {
-				cy = wrap(g, "Make " + name(target.item()) + " to " + target.high() + (target.low() == null ? "" : ", back when under " + target.low()), tx + 4, cy, tw - 4, Theme.DIM);
-			}
-		} else {
-			cy = wrap(g, "Only base crops needed: the layout alone is the flow.", tx, cy + 2, tw, Theme.MUTED);
-		}
-		if (e.fillCells() > 0) cy = filledNote(g, e, tx, cy + 2, tw);
-
-		// The profit share it's measured against, as before
-		cy += 6;
-		Theme.small(g, font, "PROFIT SHARE · EVERY " + boardInterval + " · PLOT TIME TO KEEP IT RUNNING", tx, cy, Theme.FAINT);
-		cy += 8;
-		if (share == null || !share.possible()) {
-			cy = wrap(g, "Can't run: one of its inputs has no plot that makes it.", tx, cy, tw, Theme.DANGER);
-		} else {
-			cy = wrap(g, "Profit share " + Math.round(share.uptime() * 100) + "%: " + items(share.made() * boardPlots) + " " + e.name() + " and "
-					+ coins(share.coins() * boardPlots) + " coins a day from " + plots + " shared across the chain", tx, cy, tw, Theme.TEXT);
-			cy += 2;
-			List<Map.Entry<String, Double>> shares = new ArrayList<>(share.shares().entrySet());
-			shares.sort(Map.Entry.<String, Double>comparingByValue().reversed());
-			for (Map.Entry<String, Double> part : shares) {
-				boolean main = part.getKey().equals(e.mutation());
-				String label = (main ? "★ " : "") + plotName(part.getKey());
-				int barX = tx + 96;
-				int barW = Math.max(10, tw - 96 - 34);
-				g.text(font, Theme.fit(font, label, 92), tx, cy, main ? Theme.TEXT_BRIGHT : Theme.DIM, false);
-				g.fill(barX, cy + 2, barX + barW, cy + 6, Theme.CARD_SUNK);
-				g.fill(barX, cy + 2, barX + (int) Math.round(barW * part.getValue()), cy + 6, main ? Theme.accent() : Theme.INFO);
-				String pct = String.format(Locale.ROOT, "%.1f%%", part.getValue() * 100);
-				g.text(font, pct, tx + tw - font.width(pct), cy, main ? Theme.accent() : Theme.DIM, false);
-				cy += 11;
-			}
-		}
-		return cy;
-	}
-
-	private int filledNote(GuiGraphicsExtractor g, Leaderboard.Entry e, int tx, int cy, int tw) {
-		return wrap(g, "Filled: " + e.fillCells() + " free cells hold base crops and spawn spots for commons (its inputs' first), out of reach of every"
-				+ " spot's ring and buffs.", tx, cy, tw, Theme.MUTED);
-	}
-
-	/** "~2.5 days", "~9 hours" between swaps at {@code perDay} swaps a day. */
-	private static String swapEvery(double perDay) {
-		if (perDay <= 0) return "never";
-		double days = 1 / perDay;
-		return days >= 1.5 ? String.format(Locale.ROOT, "~%.1f days", days) : String.format(Locale.ROOT, "~%.0f hours", days * 24);
-	}
-
-	private String plotName(String key) {
-		return switch (key) {
-			case "shellfruit_loop_plot" -> "Shellfruit loop";
-			case "replant_converter" -> "Replant converter";
-			default -> name(key);
-		};
 	}
 
 	// Flows (import and library)
@@ -1983,7 +1132,7 @@ public final class CompanionScreen extends Screen {
 	}
 
 	/** 1, or 10 with Shift, 100 with Ctrl (the game's own checks: 26.3 numbers the modifier keys differently). */
-	private static int step(MouseButtonEvent event) {
+	static int step(MouseButtonEvent event) {
 		if (event.hasControlDown()) return 100;
 		if (event.hasShiftDown()) return 10;
 		return 1;
@@ -2026,10 +1175,12 @@ public final class CompanionScreen extends Screen {
 		int y = wrapSmall(g, intro, x, top, w, Theme.DIM) + 6;
 
 		List<Plants.Plant> plants = new ArrayList<>();
-		for (Plants.Plant plant : state().plants().all()) if (plant.grows()) plants.add(plant);
+		for (Plants.Plant plant : state().plants().all()) if (plant.grows() || plant.mutation()) plants.add(plant);
 		plants.sort(Comparator.comparing((Plants.Plant plant) -> table.uncovered(plant).isEmpty()).thenComparing(Plants.Plant::rarity).thenComparing(Plants.Plant::name));
 
 		int nameW = Math.min(150, w / 3);
+		int outlineX = x + w - 92;
+		Theme.small(g, font, "HIGHLIGHT", outlineX, y, Theme.MUTED);
 		Theme.small(g, font, "PLANT", x + 22, y, Theme.MUTED);
 		Theme.small(g, font, "RECORDER", x + nameW, y, Theme.MUTED);
 		Theme.small(g, font, "MODELS", x + nameW + 60, y, Theme.MUTED);
@@ -2048,299 +1199,53 @@ public final class CompanionScreen extends Screen {
 			g.text(font, Theme.fit(font, plant.name(), nameW - 26), x + 18, ry + 4, Theme.TEXT, false);
 			StageSet read = plant.allStages().minus(table.unread(plant));
 			boolean jellybean = plant.id().equals(Growth.JELLYBEAN);
-			g.text(font, jellybean ? "shape" : read.size() + "/" + plant.maxStage(), x + nameW, ry + 4, read.size() == plant.maxStage() || jellybean ? Theme.SUCCESS : Theme.DIM, false);
+			g.text(font, jellybean ? "shape" : read.size() + "/" + plant.allStages().size(), x + nameW, ry + 4, read.size() == plant.allStages().size() || jellybean ? Theme.SUCCESS : Theme.DIM, false);
 			StageSet modelled = models == null ? StageSet.EMPTY : models.covered(plant);
-			g.text(font, modelled.isEmpty() ? "—" : modelled.size() + "/" + plant.maxStage(), x + nameW + 60, ry + 4, modelled.isEmpty() ? Theme.FAINT : Theme.INFO, false);
+			g.text(font, modelled.isEmpty() ? "—" : modelled.size() + "/" + plant.allStages().size(), x + nameW + 60, ry + 4, modelled.isEmpty() ? Theme.FAINT : Theme.INFO, false);
 			StageSet left = table.uncovered(plant);
 			String unknown = plant.id().equals(Growth.ALOE) ? "✔ hologram" : jellybean ? "✔ shape" : left.isEmpty() ? "✔ all covered" : left.toString().replace("{", "").replace("}", "");
-			g.text(font, Theme.fit(font, unknown, w - nameW - 124), x + nameW + 120, ry + 4, left.isEmpty() ? Theme.SUCCESS : Theme.WARNING, false);
+			g.text(font, Theme.fit(font, unknown, w - nameW - 220), x + nameW + 120, ry + 4, left.isEmpty() ? Theme.SUCCESS : Theme.WARNING, false);
+			// Keep controls inside the visible rows, rather than giving clipped rows clickable areas.
+			if (ry + rowH <= height - Theme.PAD) {
+				String outline = settings().highlightOutline(plant.id()) == Settings.HighlightOutline.BLOCK ? "Block" : "Armor stand";
+				pill(g, mouseX, mouseY, outline, outlineX, ry + 1, false, Theme.INFO, () -> settings().toggleHighlightOutline(plant.id()));
+				if (mouseX >= outlineX && mouseX < x + w && mouseY >= ry && mouseY < ry + rowH)
+					tooltip(g, List.of(Component.literal("Click: Block / Armor stand"),
+							Component.literal("Harvest + water; falls back if absent.")), mouseX, mouseY);
+			}
 		}
 		g.disableScissor();
 	}
 
-	// Settings
-
-	private interface Flag {
-		boolean get();
-
-		void set(boolean value);
+	static @Nullable Leaderboard board() {
+		return LeaderboardPage.board();
 	}
 
-	private void settingsPage(GuiGraphicsExtractor g, int mouseX, int mouseY) {
-		Settings s = settings();
-		int x = contentX();
-		int w = Math.min(contentW(), 460);
-		int top = contentTop();
-		int bottom = height - Theme.PAD;
-		int y = top - settingsScroll;
-		g.enableScissor(x, top, x + contentW(), bottom);
-		String bypass = GreenhouseCompanion.bypassKey().getTranslatedKeyMessage().getString();
-
-		y = group(g, "Layouts", x, y, w);
-		y = toggleRow(g, mouseX, mouseY, x, y, w, "Layout Overlay", "A box in its action's colour on every cell that needs something done, ghosts of missing plants, turned the way you planted",
-				flag(() -> s.layoutHologram, value -> s.layoutHologram = value));
-		y = subToggleRow(g, mouseX, mouseY, x, y, w, true, "Identify greenhouses automatically", "The flow plot, step and turn from what grows in a greenhouse you walk into",
-				flag(() -> s.autoIdentify, value -> s.autoIdentify = value));
-		y = toggleRow(g, mouseX, mouseY, x, y, w, "Labels up Close", "+ place, ✘ remove, ⊘ clear a spot, ▼ soil, ◇ spawn spot, ✂ root, each in its own colour",
-				flag(() -> s.hologramLabels, value -> s.hologramLabels = value));
-		y = subStepperRow(g, mouseX, mouseY, x, y, w, s.hologramLabels, "Range", s.overlayLabelRange + " blocks",
-				() -> s.overlayLabelRange = Math.max(2, s.overlayLabelRange - 1), () -> s.overlayLabelRange = Math.min(32, s.overlayLabelRange + 1));
-
-		y = group(g, "Crops", x, y + 6, w);
-		y = toggleRow(g, mouseX, mouseY, x, y, w, "Short Jellybeans", "Draws each Jellybean as its bottom block; hitboxes stay as they are",
-				flag(() -> s.shrinkJellybeans, value -> s.shrinkJellybeans = value));
-		y = toggleRow(g, mouseX, mouseY, x, y, w, "Protect Growing Crops", "Left clicks on a crop that isn't fully grown do nothing; hold " + bypass + " to break anyway",
-				flag(() -> s.protectGrowing, value -> s.protectGrowing = value));
-		y = subToggleRow(g, mouseX, mouseY, x, y, w, s.protectGrowing, "Magic Jellybeans only", "",
-				flag(() -> s.protectJellybeansOnly, value -> s.protectJellybeansOnly = value));
-		y = toggleRow(g, mouseX, mouseY, x, y, w, "Protect Right Clicks", "Right clicks too; the Plant Diagnostics Tool always works",
-				flag(() -> s.protectRightClicks, value -> s.protectRightClicks = value));
-		y = toggleRow(g, mouseX, mouseY, x, y, w, "Stage Above Crops", "12 / 15: white exact, amber a range, red a look not on record, ✔ fully grown",
-				flag(() -> s.stageLabels, value -> s.stageLabels = value));
-		y = subToggleRow(g, mouseX, mouseY, x, y, w, s.stageLabels, "Magic Jellybeans only", "",
-				flag(() -> s.stageLabelsJellybeansOnly, value -> s.stageLabelsJellybeansOnly = value));
-		y = subStepperRow(g, mouseX, mouseY, x, y, w, s.stageLabels, "Range", s.labelRange + " blocks",
-				() -> s.labelRange = Math.max(4, s.labelRange - 4), () -> s.labelRange = Math.min(64, s.labelRange + 4));
-		y = toggleRow(g, mouseX, mouseY, x, y, w, "Water Above Crops", "☔ 40 above each growing crop that uses water, in its highlight colour; ? until a Hydro Can or Crop Diagnostics reads it",
-				flag(() -> s.waterAboveCrops, value -> {
-					s.waterAboveCrops = value;
-					dev.ilyapple.ghc.mod.WaterHelper.refresh();
-				}));
-		y = subStepperRow(g, mouseX, mouseY, x, y, w, s.waterAboveCrops, "Range", s.waterLabelRange + " blocks",
-				() -> s.waterLabelRange = Math.max(2, s.waterLabelRange - 2), () -> s.waterLabelRange = Math.min(64, s.waterLabelRange + 2));
-		y = toggleRow(g, mouseX, mouseY, x, y, w, "Highlight Fully Grown Crops", "What's ready to harvest, outlined from the soil up",
-				flag(() -> s.highlightHarvestable, value -> s.highlightHarvestable = value));
-		y = subColorRow(g, mouseX, mouseY, x, y, w, s.highlightHarvestable, "Colour", () -> s.grownColor, color -> s.grownColor = color);
-		y = toggleRow(g, mouseX, mouseY, x, y, w, "Highlight Crops That Need Water", "Outlines a crop that would reach −100 water before you're back, and one already at −100 (it stops growing)",
-				flag(() -> s.highlightWater, value -> {
-					s.highlightWater = value;
-					dev.ilyapple.ghc.mod.WaterHelper.refresh();
-				}));
-		y = subStepperRow(g, mouseX, mouseY, x, y, w, s.highlightWater, "Harvest interval", s.waterIntervalLabel(),
-				() -> {
-					s.waterVisitsPerDay = s.waterVisitsPerDay <= 1 ? 4 : s.waterVisitsPerDay - 1;
-					dev.ilyapple.ghc.mod.WaterHelper.refresh();
-				},
-				() -> {
-					s.waterVisitsPerDay = s.waterVisitsPerDay >= 4 ? 1 : s.waterVisitsPerDay + 1;
-					dev.ilyapple.ghc.mod.WaterHelper.refresh();
-				});
-		y = subColorRow(g, mouseX, mouseY, x, y, w, s.highlightWater, "Needs water", () -> s.needsWaterColor, color -> {
-			s.needsWaterColor = color;
-			dev.ilyapple.ghc.mod.WaterHelper.refresh();
-		});
-		y = subColorRow(g, mouseX, mouseY, x, y, w, s.highlightWater, "Dried out (−100)", () -> s.driedColor, color -> {
-			s.driedColor = color;
-			dev.ilyapple.ghc.mod.WaterHelper.refresh();
-		});
-		y = toggleRow(g, mouseX, mouseY, x, y, w, "Highlights Through Blocks", "Both highlights seen through cactus, canes and walls",
-				flag(() -> s.highlightThroughBlocks, value -> s.highlightThroughBlocks = value));
-		y = toggleRow(g, mouseX, mouseY, x, y, w, "Harvest Base Crops", "Off: Wheat, Cactus, Wild Rose and the other base crops are left to grow: no highlight, not counted as ready, no stage label",
-				flag(() -> s.harvestBaseCrops, value -> s.harvestBaseCrops = value));
-		y = subToggleRow(g, mouseX, mouseY, x, y, w, !s.harvestBaseCrops, "Protect fully grown base crops", "While base crops are left to grow, they can't be broken by accident either",
-				flag(() -> s.protectGrownBaseCrops, value -> s.protectGrownBaseCrops = value));
-
-		y = group(g, "Alerts", x, y + 6, w);
-		y = toggleRow(g, mouseX, mouseY, x, y, w, "Title when it's time to swap", "", flag(() -> s.alertTitle, value -> s.alertTitle = value));
-		y = subToggleRow(g, mouseX, mouseY, x, y, w, s.alertTitle, "Chime", "", flag(() -> s.alertSound, value -> s.alertSound = value));
-		y = subToggleRow(g, mouseX, mouseY, x, y, w, s.alertTitle, "Chat line", "With an [Open] link", flag(() -> s.alertChat, value -> s.alertChat = value));
-		y = toggleRow(g, mouseX, mouseY, x, y, w, "Chime on growth tick", "", flag(() -> s.tickChime, value -> s.tickChime = value));
-
-		y = group(g, "Profit tracker", x, y + 6, w);
-		y = toggleRow(g, mouseX, mouseY, x, y, w, "Track harvests", "Every greenhouse harvest that dropped something, and what it dropped, on the Profit page",
-				flag(() -> s.recordDrops, value -> s.recordDrops = value));
-		y = subToggleRow(g, mouseX, mouseY, x, y, w, s.recordDrops, "Icon on inventory and chat screens", "A Helianthus in the corner opens the tracker; Garden only",
-				flag(() -> s.dropsIcon, value -> s.dropsIcon = value));
-		y = subStepperRow(g, mouseX, mouseY, x, y, w, s.recordDrops && s.dropsIcon, "Corner", s.dropsIconCorner.name().toLowerCase(Locale.ROOT).replace('_', ' '),
-				() -> s.dropsIconCorner = Settings.Corner.values()[Math.floorMod(s.dropsIconCorner.ordinal() - 1, Settings.Corner.values().length)],
-				() -> s.dropsIconCorner = Settings.Corner.values()[Math.floorMod(s.dropsIconCorner.ordinal() + 1, Settings.Corner.values().length)]);
-
-		y = group(g, "HUD and look", x, y + 6, w);
-		y = toggleRow(g, mouseX, mouseY, x, y, w, "HUD", "Greenhouse, step, what to do and the next tick", flag(() -> s.hud, value -> s.hud = value));
-		y = subToggleRow(g, mouseX, mouseY, x, y, w, s.hud, "Only in the Garden", "", flag(() -> s.hudOnlyInGarden, value -> s.hudOnlyInGarden = value));
-		y = subStepperRow(g, mouseX, mouseY, x, y, w, s.hud, "Corner", s.hudCorner.name().toLowerCase(Locale.ROOT).replace('_', ' '),
-				() -> s.hudCorner = Settings.Corner.values()[Math.floorMod(s.hudCorner.ordinal() - 1, Settings.Corner.values().length)],
-				() -> s.hudCorner = Settings.Corner.values()[Math.floorMod(s.hudCorner.ordinal() + 1, Settings.Corner.values().length)]);
-		y = stepperRow(g, mouseX, mouseY, x, y, w, "Window opacity", s.menuOpacity + "%", () -> s.menuOpacity = Math.max(40, s.menuOpacity - 10), () -> s.menuOpacity = Math.min(100, s.menuOpacity + 10));
-		// Accent swatches
-		g.text(font, "Accent", x + 8, y + 6, Theme.TEXT, false);
-		int sx = x + w - 8;
-		Settings.Accent[] accents = Settings.Accent.values();
-		for (int i = accents.length - 1; i >= 0; i--) {
-			Settings.Accent accent = accents[i];
-			sx -= 16;
-			boolean selected = s.accent == accent;
-			Theme.rounded(g, sx, y + 4, 12, 12, accent.color);
-			if (selected) Theme.border(g, sx - 2, y + 2, 16, 16, Theme.TEXT_BRIGHT);
-			addHotspot(new Hotspot(sx, y + 4, 12, 12, event -> {
-				s.accent = accent;
-				s.save();
-			}));
-		}
-		y += Theme.ROW_H + 4;
-
-		// Debug: everything else, folded away
-		int headY = y + 6;
-		Theme.heading(g, font, (debugOpen ? "▾ " : "▸ ") + "Debug", x, headY + 4, w);
-		if (headY + 14 > top) addHotspot(new Hotspot(x, Math.max(headY, top), w, 14, event -> debugOpen = !debugOpen));
-		y = headY + 14;
-		if (debugOpen) {
-			y = toggleRow(g, mouseX, mouseY, x, y, w, "Check the soil", "A box and ghost soil where the ground isn't one the plant grows on (Shadevine: sand or farmland)",
-					flag(() -> s.hologramGround, value -> s.hologramGround = value));
-			y = toggleRow(g, mouseX, mouseY, x, y, w, "Overlay boxes through blocks", "The layout overlay's boxes drawn through cactus and canes",
-					flag(() -> s.overlaySeeThrough, value -> s.overlaySeeThrough = value));
-			y = toggleRow(g, mouseX, mouseY, x, y, w, "Devourer: ring only while needed", "Only asks for a Puffercloud/Zombud while a spot it touches is empty; other cells get Nether Wart (soul sand) or Cocoa Beans (farmland)",
-					flag(() -> s.devourerRingOnlyWhenNeeded, value -> s.devourerRingOnlyWhenNeeded = value));
-			y = stepperRow(g, mouseX, mouseY, x, y, w, "Cactus outline", s.cactusOutline == Settings.CactusOutline.BLOCK ? "block" : "hitbox",
-					() -> s.cactusOutline = s.cactusOutline == Settings.CactusOutline.BLOCK ? Settings.CactusOutline.HITBOX : Settings.CactusOutline.BLOCK,
-					() -> s.cactusOutline = s.cactusOutline == Settings.CactusOutline.BLOCK ? Settings.CactusOutline.HITBOX : Settings.CactusOutline.BLOCK);
-			y = toggleRow(g, mouseX, mouseY, x, y, w, "Protect the stage-119 Jellybean look", "Placed Jellybeans look like 119; ones the mod saw you place are never protected",
-					flag(() -> s.protectPlacedLook, value -> s.protectPlacedLook = value));
-			y = toggleRow(g, mouseX, mouseY, x, y, w, "Say why a click was blocked", "A line above the hotbar",
-					flag(() -> s.protectionMessage, value -> s.protectionMessage = value));
-			y = toggleRow(g, mouseX, mouseY, x, y, w, "Local debug stream",
-					"Read-only, this machine only: http://127.0.0.1:" + s.debugPort + "/events and /state, for following the mod live",
-					flag(() -> s.debugStream, value -> {
-						s.debugStream = value;
-						dev.ilyapple.ghc.mod.DebugStream.apply(s);
-					}));
-		}
-		y = wrap(g, "Keys (Options → Controls → Greenhouse Companion): open this window " + GreenhouseCompanion.openKey().getTranslatedKeyMessage().getString()
-				+ ", break anyway " + bypass + ". Or type /ghc.", x + 8, y + 4, w - 16, Theme.MUTED);
-		g.disableScissor();
-		int total = y + settingsScroll - top;
-		settingsScroll = Math.max(0, Math.min(settingsScroll, Math.max(0, total - (bottom - top) + 8)));
+	net.minecraft.client.gui.Font font() {
+		return font;
 	}
 
-	/** A setting under the one above it, indented; greyed out and inactive while {@code enabled} is false. */
-	private int subToggleRow(GuiGraphicsExtractor g, int mouseX, int mouseY, int x, int y, int w, boolean enabled, String label, String description, Flag flag) {
-		int indent = 16;
-		int h = description.isEmpty() ? 18 : 26;
-		boolean over = enabled && mouseX >= x + indent && mouseX < x + w && mouseY >= y && mouseY < y + h && mouseY >= contentTop();
-		if (over) Theme.rounded(g, x + indent, y, w - indent, h, Theme.HOVER);
-		g.fill(x + 10, y, x + 11, y + h / 2 + 1, Theme.BORDER_STRONG);
-		g.fill(x + 10, y + h / 2, x + indent, y + h / 2 + 1, Theme.BORDER_STRONG);
-		g.text(font, Theme.fit(font, label, w - indent - 50), x + indent + 6, y + 5, enabled ? Theme.TEXT : Theme.FAINT, false);
-		if (!description.isEmpty()) Theme.small(g, font, Theme.fit(font, description, (w - indent - 50) * 2), x + indent + 6, y + 15, enabled ? Theme.MUTED : Theme.FAINT);
-		Theme.toggle(g, x + w - 28, y + (h - 10) / 2, enabled && flag.get(), over);
-		if (enabled && y + h > contentTop()) addHotspot(new Hotspot(x + indent, Math.max(y, contentTop()), w - indent, h, event -> {
-			flag.set(!flag.get());
-			settings().save();
-		}));
-		return y + h + 2;
+	void addAmountBox(EditBox box) {
+		addRenderableWidget(box);
 	}
 
-	private int subStepperRow(GuiGraphicsExtractor g, int mouseX, int mouseY, int x, int y, int w, boolean enabled, String label, String value, Runnable down, Runnable up) {
-		int indent = 16;
-		g.fill(x + 10, y, x + 11, y + 11, Theme.BORDER_STRONG);
-		g.fill(x + 10, y + 10, x + indent, y + 11, Theme.BORDER_STRONG);
-		g.text(font, label, x + indent + 6, y + 6, enabled ? Theme.TEXT : Theme.FAINT, false);
-		int vx = x + w - 8 - 16;
-		if (enabled) stepper(g, mouseX, mouseY, "+", vx, y + 3, event -> {
-			up.run();
-			settings().save();
-		});
-		vx -= font.width(value) + 8;
-		g.text(font, value, vx + 4, y + 6, enabled ? Theme.accent() : Theme.FAINT, false);
-		if (enabled) stepper(g, mouseX, mouseY, "−", vx - 16, y + 3, event -> {
-			down.run();
-			settings().save();
-		});
-		return y + 22;
-	}
-
-	/** A colour setting under the one above it: one swatch per {@link Settings#HIGHLIGHT_COLORS}, the chosen one ringed. */
-	private int subColorRow(GuiGraphicsExtractor g, int mouseX, int mouseY, int x, int y, int w, boolean enabled, String label,
-			java.util.function.IntSupplier get, java.util.function.IntConsumer set) {
-		int indent = 16;
-		g.fill(x + 10, y, x + 11, y + 11, Theme.BORDER_STRONG);
-		g.fill(x + 10, y + 10, x + indent, y + 11, Theme.BORDER_STRONG);
-		g.text(font, label, x + indent + 6, y + 6, enabled ? Theme.TEXT : Theme.FAINT, false);
-		int sx = x + w - 8;
-		int[] colors = Settings.HIGHLIGHT_COLORS;
-		for (int i = colors.length - 1; i >= 0; i--) {
-			int color = colors[i];
-			sx -= 16;
-			boolean selected = get.getAsInt() == color;
-			Theme.rounded(g, sx, y + 4, 12, 12, enabled ? color : Theme.alpha(color, 0x55));
-			if (selected) Theme.border(g, sx - 2, y + 2, 16, 16, enabled ? Theme.TEXT_BRIGHT : Theme.FAINT);
-			if (enabled && y + 16 > contentTop()) addHotspot(new Hotspot(sx, Math.max(y + 4, contentTop()), 12, 12, event -> {
-				set.accept(color);
-				settings().save();
-			}));
-		}
-		return y + 22;
-	}
-
-	private static Flag flag(java.util.function.BooleanSupplier get, Consumer<Boolean> set) {
-		return new Flag() {
-			@Override
-			public boolean get() {
-				return get.getAsBoolean();
-			}
-
-			@Override
-			public void set(boolean value) {
-				set.accept(value);
-			}
-		};
-	}
-
-	private int group(GuiGraphicsExtractor g, String title, int x, int y, int w) {
-		Theme.heading(g, font, title, x, y + 4, w);
-		return y + 14;
-	}
-
-	private int toggleRow(GuiGraphicsExtractor g, int mouseX, int mouseY, int x, int y, int w, String label, String description, Flag flag) {
-		int h = description.isEmpty() ? 20 : 28;
-		boolean over = mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + h && mouseY >= contentTop();
-		if (over) Theme.rounded(g, x, y, w, h, Theme.HOVER);
-		g.text(font, Theme.fit(font, label, w - 50), x + 8, y + 6, Theme.TEXT, false);
-		if (!description.isEmpty()) Theme.small(g, font, Theme.fit(font, description, (w - 50) * 2), x + 8, y + 17, Theme.MUTED);
-		Theme.toggle(g, x + w - 28, y + (h - 10) / 2, flag.get(), over);
-		if (y + h > contentTop()) addHotspot(new Hotspot(x, Math.max(y, contentTop()), w, h, event -> {
-			flag.set(!flag.get());
-			settings().save();
-		}));
-		return y + h + 2;
-	}
-
-	private int stepperRow(GuiGraphicsExtractor g, int mouseX, int mouseY, int x, int y, int w, String label, String value, Runnable down, Runnable up) {
-		g.text(font, label, x + 8, y + 6, Theme.TEXT, false);
-		int vx = x + w - 8 - 16;
-		stepper(g, mouseX, mouseY, "+", vx, y + 3, event -> {
-			up.run();
-			settings().save();
-		});
-		vx -= font.width(value) + 8;
-		g.text(font, value, vx + 4, y + 6, Theme.accent(), false);
-		stepper(g, mouseX, mouseY, "−", vx - 16, y + 3, event -> {
-			down.run();
-			settings().save();
-		});
-		return y + 22;
-	}
-
-	/** "4.6 Dustgrain, 47 Shadevine" for the plots shown; names with no Bazaar price are added to {@code unpriced}. */
-	private String itemList(Map<String, Double> perPlot, List<String> unpriced) {
-		StringBuilder text = new StringBuilder();
-		perPlot.forEach((id, v) -> {
-			if (!text.isEmpty()) text.append(", ");
-			text.append(items(v * boardPlots)).append(' ').append(name(id));
-			if (inputPrice(id) <= 0 && !unpriced.contains(name(id))) unpriced.add(name(id));
-		});
-		return text.toString();
-	}
-
-	/** One mutation (simulator id) at the Bazaar's instant-sell price, 0 when it has none. */
-	private static double inputPrice(String id) {
-		Double price = dev.ilyapple.ghc.mod.Prices.price(dev.ilyapple.ghc.core.drops.Items.itemOf(id), dev.ilyapple.ghc.mod.Prices.Source.BAZAAR);
-		return price == null ? 0 : price;
+	void rebuildPage() {
+		rebuildWidgets();
 	}
 
 	// Small helpers
 
-	private int button(GuiGraphicsExtractor g, int mouseX, int mouseY, String label, int x, int y, int accent, Runnable action) {
+	int pill(GuiGraphicsExtractor g, int mouseX, int mouseY, String label, int x, int y, boolean active, int accent, Runnable action) {
+		int pw = font.width(label) + 12;
+		boolean over = mouseX >= x && mouseX < x + pw && mouseY >= y && mouseY < y + 14;
+		Theme.card(g, x, y, pw, 14, active ? Theme.alpha(accent, 0x33) : over ? Theme.CARD_HOVER : Theme.CARD, active ? Theme.alpha(accent, 0x99) : Theme.BORDER);
+		g.text(font, label, x + 6, y + 3, active ? accent : Theme.TEXT, false);
+		addHotspot(new Hotspot(x, y, pw, 14, event -> action.run()));
+		return pw + 4;
+	}
+
+
+	int button(GuiGraphicsExtractor g, int mouseX, int mouseY, String label, int x, int y, int accent, Runnable action) {
 		int w = font.width(label) + 12;
 		boolean over = mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + Theme.BUTTON_H;
 		Theme.card(g, x, y, w, Theme.BUTTON_H, Theme.alpha(accent, over ? 0x48 : 0x22), Theme.alpha(accent, over ? 0xCC : 0x88));
@@ -2349,7 +1254,7 @@ public final class CompanionScreen extends Screen {
 		return w;
 	}
 
-	private int smallButton(GuiGraphicsExtractor g, int mouseX, int mouseY, String label, int x, int y, int accent, Runnable action) {
+	int smallButton(GuiGraphicsExtractor g, int mouseX, int mouseY, String label, int x, int y, int accent, Runnable action) {
 		int w = font.width(label) / 2 + 8;
 		boolean over = mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + 10;
 		Theme.rounded(g, x, y, w, 10, Theme.alpha(accent, over ? 0x55 : 0x22));
@@ -2358,14 +1263,14 @@ public final class CompanionScreen extends Screen {
 		return w;
 	}
 
-	private void stepper(GuiGraphicsExtractor g, int mouseX, int mouseY, String label, int x, int y, Consumer<MouseButtonEvent> action) {
+	void stepper(GuiGraphicsExtractor g, int mouseX, int mouseY, String label, int x, int y, Consumer<MouseButtonEvent> action) {
 		boolean over = mouseX >= x && mouseX < x + 16 && mouseY >= y && mouseY < y + 14;
 		Theme.card(g, x, y, 16, 14, over ? Theme.CARD_HOVER : Theme.CARD_SUNK, Theme.BORDER_STRONG);
 		g.text(font, label, x + 8 - font.width(label) / 2, y + 3, Theme.TEXT, false);
 		addHotspot(new Hotspot(x, y, 16, 14, action));
 	}
 
-	private int wrap(GuiGraphicsExtractor g, String text, int x, int y, int width, int color) {
+	int wrap(GuiGraphicsExtractor g, String text, int x, int y, int width, int color) {
 		if (text.isEmpty()) return y;
 		for (FormattedCharSequence line : font.split(Component.literal(text), Math.max(20, width))) {
 			g.text(font, line, x, y, color, false);
@@ -2391,56 +1296,9 @@ public final class CompanionScreen extends Screen {
 		return y;
 	}
 
-	private String name(String id) {
+	String name(String id) {
 		Plants.Plant plant = state().plants().byId(id);
 		return plant == null ? id : plant.name();
-	}
-
-	private static String label(Flows.Plot plot, String stepId) {
-		int index = plot.indexOf(stepId);
-		return index < 0 ? stepId : plot.steps().get(index).label();
-	}
-
-	private String describe(Flows.Condition condition) {
-		String name = name(condition.mutationId());
-		int stage = condition.integer("stage", 0);
-		int count = condition.integer("count", 1);
-		return switch (condition.kind()) {
-			case "cycles" -> condition.integer("n", 0) + " cycles in step";
-			case "inventoryAtLeast" -> "inventory " + name(condition.string("item")) + " >= " + condition.integer("qty", 0);
-			case "inventoryBelow" -> "inventory " + name(condition.string("item")) + " < " + condition.integer("qty", 0);
-			case "collectedAtLeast" -> "collected " + name(condition.string("item")) + " >= " + condition.integer("qty", 0) + " in total";
-			case "layoutShort" -> "inventory can't fill the layout";
-			case "allFullyGrown" -> "everything fully grown";
-			case "noneFullyGrown" -> "nothing fully grown";
-			case "fullyGrown" -> count > 1 ? count + " x " + name + " fully grown" : name + " fully grown";
-			case "mutationHarvested" -> count + " x " + name + " harvested";
-			case "mutationSpawned" -> count + " x " + name + " spawned";
-			case "lowestStageAtLeast" -> "every " + name + " at stage " + stage + "+";
-			case "lowestStageBelow" -> "some " + name + " below stage " + stage + " (or none)";
-			case "highestStageAtLeast" -> "some " + name + " at stage " + stage + "+";
-			case "highestStageBelow" -> "every " + name + " below stage " + stage + " (or none)";
-			case "targetsFilled" -> condition.integer("count", 0) <= 0 ? "every target filled" : condition.integer("count", 0) + " targets filled";
-			case "plantDecayed" -> "a " + name(condition.string("kindId")) + " decayed";
-			case "stepVisits" -> "entered this step " + Math.max(1, count) + " times";
-			case "decayImminent" -> "something decays within " + condition.integer("withinCycles", 0) + " cycles";
-			case "group" -> (condition.any() ? "any of " : "all of ") + condition.of().size() + " conditions";
-			case "script" -> "script: " + condition.string("expr");
-			default -> condition.kind();
-		};
-	}
-
-	/** {@code 7}, {@code 107–8}, or {@code 85+} when a range doesn't fit in {@code maxWidth} (full-size pixels). */
-	private String stageLabel(StageSet stages, int maxWidth) {
-		if (stages.isEmpty()) return "?";
-		if (stages.size() == 1) return Integer.toString(stages.lo());
-		String hi = Integer.toString(stages.hi());
-		String lo = Integer.toString(stages.lo());
-		if (hi.length() == lo.length() && hi.length() > 1 && hi.substring(0, hi.length() - 1).equals(lo.substring(0, lo.length() - 1))) {
-			hi = hi.substring(hi.length() - 1);
-		}
-		String text = lo + "–" + hi;
-		return font.width(text) <= maxWidth ? text : lo + "+";
 	}
 
 	public static String duration(double cycles, long periodMs) {
@@ -2464,7 +1322,7 @@ public final class CompanionScreen extends Screen {
 	public void demo(int index) {
 		switch (index) {
 			case 1 -> page = Page.FLOW;
-			case 2 -> live = false;
+			case 2 -> flow.previewLayout();
 			case 3 -> page = Page.IMPORT;
 			case 4 -> page = Page.INVENTORY;
 			case 5 -> page = Page.STAGES;
@@ -2477,9 +1335,7 @@ public final class CompanionScreen extends Screen {
 			case 9 -> {
 				profileMenu = false;
 				page = Page.LEADERBOARD;
-				boardMode = Leaderboard.Mode.FLOW;
-				boardInterval = 4;
-				boardSelected = "zombud";
+				leaderboard.demo();
 			}
 			case 10 -> page = Page.DROPS;
 			case 11 -> {
@@ -2564,16 +1420,15 @@ public final class CompanionScreen extends Screen {
 		int delta = scrollY > 0 ? -1 : 1;
 		switch (page) {
 			case FLOW -> {
-				if (mouseX < contentX() + contentW() / 4.0) stepScroll += delta;
+				if (mouseX < contentX() + contentW() / 4.0) flow.scroll(delta);
 			}
 			case INVENTORY -> inventoryScroll += delta;
 			case IMPORT -> libraryScroll += delta;
 			case LEADERBOARD -> {
-				if (mouseX < contentX() + contentW() * 0.56) boardScroll += delta;
-				else boardDetailScroll = Math.max(0, boardDetailScroll + delta * 12);
+				leaderboard.scroll(mouseX, delta);
 			}
 			case STAGES -> stagesScroll += delta;
-			case SETTINGS -> settingsScroll = Math.max(0, settingsScroll + delta * 20);
+			case SETTINGS -> settingsPage.scroll(delta);
 			case DROPS -> DropsPanel.scroll(delta);
 			default -> {
 			}

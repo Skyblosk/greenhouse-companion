@@ -132,16 +132,16 @@ class DropsTest {
 	}
 
 	@Test
-	void rareCropsComeFromPlantsThatDropTheirCrops() {
+	void mutationsRollArmorRareCropsRegardlessOfTheirOrdinaryDrops() {
 		DropBook book = new DropBook(0);
 		LootTable loot = new LootTable(Map.of("shadevine", Map.of("CACTUS", 78.0, "SUGAR_CANE", 104.0, "SHADEVINE", 1.0),
 				"dustgrain", Map.of("WHEAT", 72.0, "DUSTGRAIN", 1.0), "cactus", Map.of("CACTUS", 132.0)), java.util.Set.of("shadevine", "dustgrain"));
 		DropMatcher matcher = new DropMatcher(List.of(book), loot);
-		// The user's Plot 9: a Fermento while a Shadevine and a Dustgrain broke goes to the Shadevine (Cactus, Sugar Cane)
+		// Both mutations are eligible: use the harvest nearest the measured chat-to-break delay.
 		matcher.harvest(new DropMatcher.Harvest("dustgrain", 12, 600));
 		matcher.harvest(new DropMatcher.Harvest("shadevine", 14, 700));
 		matcher.drop(chat("FERMENTO", 11, true));
-		// A Dustgrain alone can't give one
+		// A common Dustgrain alone can give Fermento, despite only dropping Wheat normally.
 		matcher.harvest(new DropMatcher.Harvest("dustgrain", 100, 5000));
 		matcher.drop(chat("FERMENTO", 98, true));
 		// Ethereal Vine only from a mutation: the Shadevine, not the Cactus seen nearer the line
@@ -150,9 +150,55 @@ class DropsTest {
 		matcher.drop(chat("ETHEREAL_VINE", 200, true));
 		matcher.tick(400, 20_000);
 		assertEquals(1, book.lines().get("shadevine").drop("FERMENTO"));
-		assertEquals(Map.of("FERMENTO", 1L), book.unmatched());
+		assertEquals(1, book.lines().get("dustgrain").drop("FERMENTO"));
+		assertTrue(book.unmatched().isEmpty());
 		assertEquals(1, book.lines().get("shadevine").drop("ETHEREAL_VINE"));
 		assertNull(book.lines().get("cactus"));
+	}
+
+
+	@Test
+	void commonMutationsCanReceiveEveryArmorRareCropFromChat() {
+		for (String plant : List.of("shadevine", "dustgrain", "lonelily", "veilshroom", "ashwreath")) {
+			LootTable loot = new LootTable(Map.of(plant, Map.of("WHEAT", 72.0)), java.util.Set.of(plant));
+			DropBook book = new DropBook(0);
+			DropMatcher matcher = new DropMatcher(List.of(book), loot);
+			matcher.harvest(new DropMatcher.Harvest(plant, 13, 650));
+			for (String item : LootTable.RARE_CROP_OF.keySet()) matcher.drop(chat(item, 10, true));
+			matcher.tick(18, 900);
+			assertEquals(1, book.lines().get(plant).harvested());
+			for (String item : LootTable.RARE_CROP_OF.keySet()) assertEquals(1, book.lines().get(plant).drop(item));
+			assertTrue(book.unmatched().isEmpty());
+		}
+	}
+
+	@Test
+	void chatTimingDoesNotPreferADistantMutationWithMatchingBaseCropDrops() {
+		LootTable loot = new LootTable(Map.of("dustgrain", Map.of("WHEAT", 72.0),
+				"shadevine", Map.of("CACTUS", 78.0), "wheat", Map.of("WHEAT", 72.0)), java.util.Set.of("dustgrain", "shadevine"));
+		DropBook book = new DropBook(0);
+		DropMatcher matcher = new DropMatcher(List.of(book), loot);
+		matcher.harvest(new DropMatcher.Harvest("shadevine", 10, 500));
+		matcher.harvest(new DropMatcher.Harvest("dustgrain", 13, 650));
+		matcher.drop(chat("FERMENTO", 10, true));
+		matcher.harvest(new DropMatcher.Harvest("wheat", 103, 5150));
+		matcher.drop(chat("FERMENTO", 100, true));
+		matcher.tick(110, 5500);
+		assertEquals(1, book.lines().get("dustgrain").drop("FERMENTO"));
+		assertEquals(Map.of("FERMENTO", 1L), book.unmatched());
+		assertNull(book.lines().get("shadevine"));
+	}
+
+	@Test
+	void simultaneousRareDropsStayMixedRatherThanBeingSplitByOrdinaryLoot() {
+		DropBook book = new DropBook(0);
+		DropMatcher matcher = matcher(book);
+		matcher.harvest(new DropMatcher.Harvest("shadevine", 13, 650));
+		matcher.harvest(new DropMatcher.Harvest("magic_jellybean", 13, 650));
+		matcher.drop(chat("FERMENTO", 10, true));
+		matcher.tick(18, 900);
+		assertEquals(Map.of("FERMENTO", 1L), book.mixed());
+		assertTrue(book.lines().isEmpty());
 	}
 
 	@Test

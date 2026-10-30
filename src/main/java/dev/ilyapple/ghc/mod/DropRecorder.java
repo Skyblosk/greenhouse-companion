@@ -87,7 +87,7 @@ public final class DropRecorder {
 		this.dir = configDir.resolve("greenhouse-companion").resolve("drops");
 		this.loot = loadLoot();
 		DropBook saved = load(dir.resolve("drops.json"));
-		// A book from before 28 Oct counted breaks that yielded nothing: rebuild it from the logs under today's rules
+		// Rebuild old attribution from the read-only logs, including common mutations' armor rare crops.
 		this.allTime = saved != null ? saved : rebuild(dir, loot);
 		this.matcher = new DropMatcher(List.of(session, allTime), loot);
 		if (saved == null) save();
@@ -117,28 +117,37 @@ public final class DropRecorder {
 		} catch (IOException | RuntimeException e) {
 			GreenhouseCompanion.LOGGER.warn("[GHC] Could not read the drop logs in {}", dir, e);
 		}
-		events.sort(java.util.Comparator.comparingLong(event -> event.get("t").getAsLong()));
-		DropBook book = new DropBook(events.isEmpty() ? System.currentTimeMillis() : events.getFirst().get("t").getAsLong());
+		events.sort(java.util.Comparator.comparingLong(DropRecorder::arrived));
+		DropBook book = new DropBook(events.isEmpty() ? System.currentTimeMillis() : arrived(events.getFirst()));
 		DropMatcher replay = new DropMatcher(List.of(book), loot);
 		long last = 0;
 		for (JsonObject event : events) {
-			long t = event.get("t").getAsLong();
+			long t = arrived(event);
 			last = t;
-			replay.tick(t / 50, t);
+			// Include all events in a client tick before settling its drops, just like the live recorder.
+			replay.tick(t / 50 - 1, t - 50);
 			String type = event.get("type").getAsString();
-			if (type.equals("reset") && "allTime".equals(string(event, "book"))) book.clear(t);
+			if (type.equals("reset") && "allTime".equals(string(event, "book"))) {
+				book.clear(t);
+				replay = new DropMatcher(List.of(book), loot);
+			}
 			if (type.equals("harvest") && !"placed".equals(string(event, "origin"))) replay.harvest(new DropMatcher.Harvest(string(event, "plant"), t / 50, t));
 			if (!type.equals("drop")) continue;
 			DropMatcher.Source source = DropMatcher.Source.valueOf(string(event, "source").toUpperCase(java.util.Locale.ROOT));
 			String item = string(event, "item");
 			if (source != DropMatcher.Source.CHAT && Items.RARE.contains(item)) continue;
-			// Chat and inventory drops were logged once settled, a few ticks after they came (lagTicks; 4 before 28 Oct)
-			long settled = event.has("lagTicks") ? event.get("lagTicks").getAsLong() : DropMatcher.OLD_SETTLE_TICKS;
-			long arrived = source == DropMatcher.Source.SACKS ? t : t - settled * 50L;
-			replay.drop(new DropMatcher.Drop(item, event.get("count").getAsLong(), source, arrived / 50, arrived, true));
+			replay.drop(new DropMatcher.Drop(item, event.get("count").getAsLong(), source, t / 50, t, true));
 		}
 		replay.tick(last / 50 + 10_000, last + DropMatcher.COUNT_WITHIN_MS + 1);
 		return book;
+	}
+
+	/** Drop logs carry settlement time; replay in arrival order so later harvests remain eligible. */
+	private static long arrived(JsonObject event) {
+		long t = event.get("t").getAsLong();
+		if (!"drop".equals(string(event, "type")) || "sacks".equals(string(event, "source"))) return t;
+		long lag = event.has("lagTicks") ? event.get("lagTicks").getAsLong() : DropMatcher.OLD_SETTLE_TICKS;
+		return t - lag * 50L;
 	}
 
 	private static String string(JsonObject json, String member) {
@@ -229,6 +238,14 @@ public final class DropRecorder {
 		}
 		Map.Entry<String, Long> rare = Items.rareCrop(text);
 		if (rare != null) {
+			String chat = text;
+			DebugStream.emit("rareCrop", json -> {
+				json.addProperty("message", chat);
+				json.addProperty("item", rare.getKey());
+				json.addProperty("count", rare.getValue());
+				json.addProperty("tick", tick);
+				DebugStream.site(json, GreenhouseCompanion.currentSite());
+			});
 			drop(rare.getKey(), rare.getValue(), DropMatcher.Source.CHAT);
 			return;
 		}
@@ -360,6 +377,7 @@ public final class DropRecorder {
 		json.addProperty("t", System.currentTimeMillis());
 		json.addProperty("type", type);
 		fields.add(json);
+		DebugStream.emit("dropRecorder", event -> json.entrySet().forEach(entry -> event.add(entry.getKey().equals("type") ? "event" : entry.getKey(), entry.getValue())));
 		try {
 			Files.createDirectories(dir);
 			try (BufferedWriter out = Files.newBufferedWriter(dir.resolve("log-" + LocalDate.now() + ".jsonl"), StandardCharsets.UTF_8,
@@ -372,17 +390,20 @@ public final class DropRecorder {
 		}
 	}
 
-	/**
-	 * The saved all-time book, or {@code null} when there is none under today's rules yet: version 4 (28 Oct: breaks that
-	 * yield nothing aren't counted, drops split by loot table, a rare crop only from a plant that drops its crops, Ethereal
-	 * Vine only from mutations, the break looked for up to 8 ticks after its line).
-	 */
+	/** Version 5 replays armor rare crops for every mutation, regardless of its ordinary crop drops or rarity. */
 	private static @Nullable DropBook load(Path file) {
 		try {
 			if (Files.exists(file)) {
 				JsonObject root = JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8)).getAsJsonObject();
 				int version = root.has("version") ? root.get("version").getAsInt() : 1;
-				if (version >= 4 && root.has("allTime")) return DropBook.fromJson(root.getAsJsonObject("allTime"));
+				if (root.has("allTime")) {
+					if (version >= 5) return DropBook.fromJson(root.getAsJsonObject("allTime"));
+					// A player may have removed the raw logs. An upgrade must not replace their totals with an empty replay.
+					if (!hasReplayLogs(file.getParent())) {
+						GreenhouseCompanion.LOGGER.warn("[GHC] Keeping saved drop totals because no replay logs are available in {}", file.getParent());
+						return DropBook.fromJson(root.getAsJsonObject("allTime"));
+					}
+				}
 			}
 		} catch (IOException | RuntimeException e) {
 			GreenhouseCompanion.LOGGER.error("[GHC] Could not read {}, rebuilding the drop book from the logs", file, e);
@@ -390,11 +411,22 @@ public final class DropRecorder {
 		return null;
 	}
 
+	private static boolean hasReplayLogs(Path dir) {
+		try (var files = Files.list(dir)) {
+			for (Path file : files.filter(path -> path.getFileName().toString().matches("log-.*\\.jsonl")).toList()) {
+				if (Files.isRegularFile(file) && Files.size(file) > 0) return true;
+			}
+		} catch (IOException e) {
+			GreenhouseCompanion.LOGGER.warn("[GHC] Could not check the replay logs in {}", dir, e);
+		}
+		return false;
+	}
+
 	public void save() {
 		dirty = false;
 		lastSaveMs = System.currentTimeMillis();
 		JsonObject root = new JsonObject();
-		root.addProperty("version", 4);
+		root.addProperty("version", 5);
 		root.add("allTime", allTime.toJson());
 		String text = GSON.toJson(root);
 		if (text.equals(lastSaved)) return;

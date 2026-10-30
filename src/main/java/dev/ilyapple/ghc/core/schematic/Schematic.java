@@ -236,6 +236,55 @@ public record Schematic(int[][] grid, Map<Integer, Integer> targets, Map<Integer
 		}
 	}
 
+	/** Encodes plant anchors in the same SkyShards format we import. */
+	public static Schematic fromAnchors(Map<Integer, Integer> placements, Map<Integer, Integer> targets) {
+		List<Integer> inputs = placements.values().stream().distinct().sorted().toList();
+		List<Integer> spots = targets.values().stream().distinct().sorted().toList();
+		StringBuilder tiles = new StringBuilder("..".repeat(TOTAL_CELLS));
+		for (Map<Integer, Integer> anchors : List.of(placements, targets)) {
+			boolean target = anchors == targets;
+			List<Integer> palette = target ? spots : inputs;
+			for (var entry : anchors.entrySet()) {
+				int cell = entry.getKey();
+				int size = SkyblockerCrops.sizeOf(entry.getValue());
+				if (cell < 0 || cell >= TOTAL_CELLS || cell / SIZE + size > SIZE || cell % SIZE + size > SIZE)
+					throw new IllegalArgumentException("Plant footprint outside the greenhouse");
+				int index = palette.indexOf(entry.getValue());
+				char base = target ? 'A' : 'a';
+				int offset = (cell % SIZE * SIZE + cell / SIZE) * 2;
+				tiles.setCharAt(offset, (char) (base + index / LETTERS));
+				tiles.setCharAt(offset + 1, (char) (base + index % LETTERS));
+			}
+		}
+		String raw = encodePalette(inputs) + "|" + encodePalette(spots) + "|" + tiles;
+		java.util.zip.Deflater deflater = new java.util.zip.Deflater(java.util.zip.Deflater.DEFAULT_COMPRESSION, true);
+		try {
+			java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+			try (var out = new java.util.zip.DeflaterOutputStream(bytes, deflater)) {
+				out.write(raw.getBytes(StandardCharsets.UTF_8));
+			}
+			String code = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes.toByteArray());
+			return Objects.requireNonNull(fromSkyShards(code));
+		} catch (java.io.IOException e) {
+			throw new IllegalStateException("Could not encode layout", e);
+		} finally {
+			deflater.end();
+		}
+	}
+
+	private static String encodePalette(List<Integer> palette) {
+		List<String> values = new ArrayList<>();
+		for (int id : palette) {
+			int index = id >= 1 && id <= MUTATION_COUNT ? PALETTE_CROPS + id - 1 : -1;
+			for (int i = 0; i < PALETTE_CROP_NAMES.length; i++) {
+				if (Objects.requireNonNull(SkyblockerCrops.byName(PALETTE_CROP_NAMES[i])).id() == id) index = i;
+			}
+			if (index < 0) throw new IllegalArgumentException("Unsupported crop " + id);
+			values.add(Integer.toString(index, 36));
+		}
+		return String.join(",", values);
+	}
+
 	private static @Nullable String decompress(String code) throws Exception {
 		byte[] compressed = Base64.getUrlDecoder().decode(code);
 		try (InputStream in = new InflaterInputStream(new ByteArrayInputStream(compressed), new Inflater(true))) {

@@ -15,7 +15,7 @@ import dev.ilyapple.ghc.core.replay.Replay;
 import dev.ilyapple.ghc.core.replay.ReplayReport;
 
 /**
- * Replays the stage recorder's real files and writes {@code replay-report.md}. Skipped when {@code GHF_RECORDINGS}
+ * Replays the stage recorder's real files and writes {@code build/reports/replay.md} (or {@code GHF_REPORT}). Skipped when {@code GHF_RECORDINGS}
  * (set by the build to the Prism instance's recorder folder) doesn't hold the three files.
  */
 class ReplayTest {

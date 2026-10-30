@@ -14,6 +14,7 @@ import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
+import dev.ilyapple.ghc.mod.GreenhouseCompanion;
 import dev.ilyapple.ghc.mod.compat.BoxPipelines;
 import dev.ilyapple.ghc.mod.compat.Mc;
 
@@ -40,6 +41,8 @@ public final class Boxes {
 	}
 
 	private static void submit(LevelRenderContext context) {
+		var settings = GreenhouseCompanion.settings();
+		if (!settings.boxFill && !settings.boxOutline) return;
 		List<Box> depth = new ArrayList<>();
 		List<Box> depthless = new ArrayList<>();
 		for (Source source : SOURCES) {
@@ -52,10 +55,10 @@ public final class Boxes {
 		SubmitNodeCollector collector = context.submitNodeCollector();
 		poseStack.pushPose();
 		poseStack.translate(-camera.x, -camera.y, -camera.z);
-		if (!depth.isEmpty()) collector.submitCustomGeometry(poseStack, BoxPipelines.LINES_DEPTH, (pose, buffer) -> frames(pose, buffer, depth));
-		if (!depthless.isEmpty()) collector.submitCustomGeometry(poseStack, BoxPipelines.LINES_DEPTHLESS, (pose, buffer) -> frames(pose, buffer, depthless));
-		if (!depth.isEmpty()) collector.submitCustomGeometry(poseStack, BoxPipelines.FILLED_DEPTH, (pose, buffer) -> fills(pose, buffer, depth));
-		if (!depthless.isEmpty()) collector.submitCustomGeometry(poseStack, BoxPipelines.FILLED_DEPTHLESS, (pose, buffer) -> fills(pose, buffer, depthless));
+		if (settings.boxOutline && !depth.isEmpty()) collector.submitCustomGeometry(poseStack, BoxPipelines.LINES_DEPTH, (pose, buffer) -> frames(pose, buffer, depth));
+		if (settings.boxOutline && !depthless.isEmpty()) collector.submitCustomGeometry(poseStack, BoxPipelines.LINES_DEPTHLESS, (pose, buffer) -> frames(pose, buffer, depthless));
+		if (settings.boxFill && !depth.isEmpty()) collector.submitCustomGeometry(poseStack, BoxPipelines.FILLED_DEPTH, (pose, buffer) -> fills(pose, buffer, depth));
+		if (settings.boxFill && !depthless.isEmpty()) collector.submitCustomGeometry(poseStack, BoxPipelines.FILLED_DEPTHLESS, (pose, buffer) -> fills(pose, buffer, depthless));
 		poseStack.popPose();
 	}
 

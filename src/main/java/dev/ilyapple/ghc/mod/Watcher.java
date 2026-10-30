@@ -189,6 +189,8 @@ final class Watcher {
 			// The raw key includes holograms, so All-in Aloe's "Stage N" counts as a change
 			String raw = keys.raw();
 			if (raw.equals(applied[cell])) {
+				// A dry crop may keep its look when the shared clock advances. Reconcile it before drawing.
+				if (site.greenhouse().tracker().hasPendingTicks(cell)) apply(site, cell, print, keys, applied[cell], now);
 				pending[cell] = null;
 				continue;
 			}

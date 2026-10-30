@@ -42,6 +42,61 @@ class ModStateTest {
 	}
 
 	@Test
+	void profileArrivingAfterCarpenterDoesNotDuplicateOrReplaceSavedWater(@TempDir Path dir) {
+		ModState state = load(dir);
+		String scope = state.onSkyblockProfile("hypixel.net", UUID_A, null);
+		ModState.Site saved = state.site(scope, PLOT_4);
+		state.markGreenhouse(saved.key());
+		state.importFlows(FLOWS, "Keep this flow");
+		state.assign(saved, 1, false, 2);
+		saved.greenhouse().water().load(com.google.gson.JsonParser.parseString("{\"61\":[-100,7]}").getAsJsonObject());
+		state.save();
+		ModState again = load(dir);
+		// New session: the Carpenter is seen before the Profile ID chat message.
+		ModState.Site provisional = again.site(again.scope("hypixel.net"), PLOT_4);
+		again.markGreenhouse(provisional.key());
+		assertEquals(2, again.sites().size());
+		again.onSkyblockProfile("hypixel.net", UUID_A, null);
+		assertEquals(1, again.sites().size());
+		ModState.Site restored = again.siteByKey(scope + "|-5,91");
+		assertNotNull(restored);
+		assertEquals(1, again.assignment(restored).plotId());
+		assertEquals(2, again.assignment(restored).rotation());
+		assertEquals(-100, restored.greenhouse().water().toJson().getAsJsonArray("61").get(0).getAsInt());
+		again.save();
+		assertEquals(1, load(dir).sites().size());
+	}
+
+	@Test
+	void aNewSkyblockProfileAdoptsItsGreenhouseWhenTheProfileIdArrivesLate(@TempDir Path dir) {
+		ModState state = load(dir);
+		String firstScope = state.onSkyblockProfile("hypixel.net", UUID_A, "First");
+		ModState.Site first = state.site(firstScope, PLOT_4);
+		state.markGreenhouse(first.key());
+		state.importFlows(FLOWS, "First profile flow");
+		state.assign(first, 1, false, 2);
+		state.save();
+		ModState again = load(dir);
+		ModState.Site provisional = again.site(again.scope("hypixel.net"), PLOT_9);
+		again.markGreenhouse(provisional.key());
+		again.assign(provisional, 1, false, 0); // An early identification used the previously viewed profile.
+		provisional.greenhouse().water().load(com.google.gson.JsonParser.parseString("{\"61\":[25,7]}").getAsJsonObject());
+		String secondScope = again.onSkyblockProfile("hypixel.net", UUID_B, "Second");
+		ModState.Site adopted = again.siteByKey(secondScope + "|-5,-197");
+		assertNotNull(adopted, "the provisional greenhouse belongs to the newly identified profile");
+		assertNull(again.siteByKey("hypixel.net|-5,-197"));
+		assertEquals(2, again.sites().size());
+		assertNull(again.assignment(adopted), "a new profile must not inherit the previous profile's flow");
+		assertNull(adopted.greenhouse().runner());
+		assertEquals(1, again.assignment(again.siteByKey(firstScope + "|-5,91")).plotId());
+		assertEquals(25, adopted.greenhouse().water().toJson().getAsJsonArray("61").get(0).getAsInt());
+		again.save();
+		ModState restored = load(dir);
+		assertNotNull(restored.siteByKey(firstScope + "|-5,91"));
+		assertNotNull(restored.siteByKey(secondScope + "|-5,-197"));
+	}
+
+	@Test
 	void importsAreWrittenToTheirOwnFileAtOnce(@TempDir Path dir) throws Exception {
 		ModState state = load(dir);
 		state.importFlows(FLOWS, "MAGA Jellybean");
@@ -183,6 +238,58 @@ class ModStateTest {
 		ModState state = load(dir);
 		assertEquals(List.of(ModState.TEST_FLOW_NAME), state.library().stream().map(ModState.FlowFile::name).toList());
 		assertNull(state.viewedProfile().flowName(), "nothing follows the sample until it's picked");
+	}
+
+	@Test
+	void copiedPlotsPersistWithoutResettingExistingFlowProgress(@TempDir Path dir) {
+		ModState state = load(dir);
+		ModState.Site a = state.site("hypixel.net", PLOT_4);
+		state.markGreenhouse(a.key());
+		a.greenhouse().observe(27, com.google.gson.JsonParser.parseString("{\"blocks\":[\"minecraft:wheat[age=1]\"],\"entities\":[]}").getAsJsonObject(), 1000);
+		a.greenhouse().diagnose(27, dev.ilyapple.ghc.core.Diagnosis.parse("Wheat", List.of("Stage: 2/8")), 1000);
+		state.copyLiveLayout(a);
+		assertNotNull(a.greenhouse().runner());
+		assertEquals(java.util.Map.of("wheat", 1), a.greenhouse().runner().step().schematic().inputCounts());
+		assertFalse(a.greenhouse().swapPending());
+		a.greenhouse().tick(3, 3);
+		ModState.Site b = state.site("hypixel.net", PLOT_9);
+		state.markGreenhouse(b.key());
+		b.greenhouse().observe(63, com.google.gson.JsonParser.parseString("{\"blocks\":[\"minecraft:carrots[age=7]\"],\"entities\":[]}").getAsJsonObject(), 2000);
+		b.greenhouse().diagnose(63, dev.ilyapple.ghc.core.Diagnosis.parse("Carrot", List.of("Stage: 8/8")), 2000);
+		state.copyLiveLayout(b);
+		assertEquals(2, state.flows().plots().size());
+		assertEquals(3, a.greenhouse().runner().cyclesInStep());
+		assertEquals(0, state.assignment(b).rotation());
+		org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () -> state.copyLiveLayout(a));
+		ModState again = load(dir);
+		assertEquals(2, again.flows().plots().size());
+		assertEquals(2, again.assignment(again.siteByKey(b.key())).plotId());
+		assertEquals(3, again.siteByKey(a.key()).greenhouse().runner().cyclesInStep());
+	}
+
+	@Test
+	void copyingAppendsToImportsAndKeepsTheirMetadata(@TempDir Path dir) {
+		for (boolean links : List.of(false, true)) {
+			ModState state = load(dir.resolve(links ? "links" : "json"));
+			String imported = FLOWS;
+			if (links) imported = dev.ilyapple.ghc.core.flow.Flows.parse(FLOWS).plots().getFirst().steps().getFirst().layoutCode();
+			else {
+				var json = com.google.gson.JsonParser.parseString(imported).getAsJsonObject();
+				json.addProperty("customMetadata", "keep me");
+				imported = json.toString();
+			}
+			state.importFlows(imported, "Existing flow");
+			var original = state.flows().plots();
+			ModState.Site site = state.site("hypixel.net", PLOT_4);
+			state.markGreenhouse(site.key());
+			site.greenhouse().observe(27, com.google.gson.JsonParser.parseString(
+					"{\"blocks\":[\"minecraft:wheat[age=1]\"],\"entities\":[]}").getAsJsonObject(), 1000);
+			state.copyLiveLayout(site);
+			assertEquals(original, state.flows().plots().subList(0, original.size()));
+			assertEquals(original.size() + 1, state.flows().plots().size());
+			assertEquals("Existing flow", state.activeFile().name());
+			if (!links) assertEquals("keep me", state.flows().raw().get("customMetadata").getAsString());
+		}
 	}
 
 	@Test

@@ -40,3 +40,8 @@ ironman-flows/
 # A downloaded SkyShards engine is never committed
 engines/
 *.patched.js
+
+# Local AI instructions and reference documentation
+/CLAUDE.md
+/AGENTS.md
+/docs/

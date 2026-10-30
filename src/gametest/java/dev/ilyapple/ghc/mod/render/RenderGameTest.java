@@ -12,6 +12,14 @@ import net.minecraft.SharedConstants;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.decoration.ArmorStand;
+import dev.ilyapple.ghc.mod.GreenhouseCompanion;
+import dev.ilyapple.ghc.mod.Settings;
+import dev.ilyapple.ghc.core.StageSet;
+import dev.ilyapple.ghc.core.StageTracker;
+import dev.ilyapple.ghc.core.flow.Census;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -30,6 +38,7 @@ public class RenderGameTest implements FabricClientGameTest {
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
 			// Let the chunks render (the chunk-wait call is named differently on 26.1 and 26.2+)
 			context.waitTicks(60);
+			checkHighlightGeometry(context, world);
 			world.getServer().runCommand("time set noon");
 			world.getServer().runCommand("weather clear");
 			// Stand still facing east (+x), looking a little down; "at" is on the ground 5 blocks ahead
@@ -58,6 +67,69 @@ public class RenderGameTest implements FabricClientGameTest {
 			});
 			context.waitTicks(40);
 			context.takeScreenshot("ghc-render-" + SharedConstants.getCurrentVersion().name());
+			Settings settings = GreenhouseCompanion.settings();
+			boolean originalFill = settings.boxFill;
+			boolean originalOutline = settings.boxOutline;
+			try {
+				for (boolean fill : new boolean[] {true, false}) for (boolean outline : new boolean[] {true, false}) {
+					context.runOnClient(client -> {
+						settings.boxFill = fill;
+						settings.boxOutline = outline;
+					});
+					context.waitTicks(10);
+					context.takeScreenshot("box-style-" + (fill ? "fill" : "no-fill") + "-" + (outline ? "outline" : "no-outline"));
+				}
+			} finally {
+				context.runOnClient(client -> {
+					settings.boxFill = originalFill;
+					settings.boxOutline = originalOutline;
+				});
+			}
 		}
 	}
+	/** Verify the actual client block/armor-stand shapes and fallbacks, including a common mutation. */
+	@SuppressWarnings("unchecked")
+	private void checkHighlightGeometry(ClientGameTestContext context, TestSingleplayerContext world) {
+		// The default test world can be far below y=73. Support the player and the depth-test boxes.
+		world.getServer().runCommand("fill -4 73 -4 12 73 12 stone");
+		world.getServer().runCommand("tp @a 0 76 3");
+		world.getServer().runCommand("setblock 0 73 0 farmland");
+		world.getServer().runCommand("setblock 0 74 0 wheat[age=7]");
+		world.getServer().runCommand("summon armor_stand 0.5 74 0.5 {NoGravity:1b,Tags:[\"ghc_outline_test\"]}");
+		context.waitTicks(40);
+		context.runOnClient(client -> {
+			BlockPos corner = new BlockPos(0, 73, 0);
+			List<Entity>[] entities = new List[100];
+			for (int i = 0; i < entities.length; i++) entities[i] = List.of();
+			entities[0] = client.level.getEntities((Entity) null, new AABB(0, 74, 0, 1, 77, 1), e -> e instanceof ArmorStand);
+			if (entities[0].isEmpty()) throw new AssertionError("Highlight fixture needs an armor stand");
+			var kind = GreenhouseCompanion.state().plants().byId("shadevine");
+			var plant = new Census.Plant(kind, List.of(0), StageSet.of(0), StageTracker.Origin.SPAWNED, true, true);
+			Settings settings = new Settings();
+			List<AABB> stands = Highlight.outline(client.level, corner, plant, entities, false, settings);
+			settings.toggleHighlightOutline("shadevine");
+			List<AABB> blocks = Highlight.outline(client.level, corner, plant, entities, false, settings);
+			if (stands.isEmpty() || blocks.isEmpty() || stands.equals(blocks))
+				throw new AssertionError("Common mutations must switch between distinct block and armor-stand shapes");
+			entities[0] = List.of();
+			settings.toggleHighlightOutline("shadevine");
+			if (Highlight.outline(client.level, corner, plant, entities, false, settings).isEmpty())
+				throw new AssertionError("A block-only crop must still be highlighted in armor-stand mode");
+		});
+		world.getServer().runCommand("setblock 0 74 0 air");
+		context.waitTicks(10);
+		context.runOnClient(client -> {
+			List<Entity>[] entities = new List[100];
+			for (int i = 0; i < entities.length; i++) entities[i] = List.of();
+			entities[0] = client.level.getEntities((Entity) null, new AABB(0, 74, 0, 1, 77, 1), e -> e instanceof ArmorStand);
+			var kind = GreenhouseCompanion.state().plants().byId("shadevine");
+			var plant = new Census.Plant(kind, List.of(0), StageSet.of(0), StageTracker.Origin.SPAWNED, true, true);
+			Settings settings = new Settings();
+			settings.toggleHighlightOutline("shadevine");
+			if (Highlight.outline(client.level, new BlockPos(0, 73, 0), plant, entities, false, settings).isEmpty())
+				throw new AssertionError("An armor-only mutation must still be highlighted in block mode");
+		});
+		world.getServer().runCommand("kill @e[tag=ghc_outline_test]");
+	}
+
 }

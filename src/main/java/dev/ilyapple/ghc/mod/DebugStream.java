@@ -252,6 +252,7 @@ public final class DebugStream {
 		dev.ilyapple.ghc.core.schematic.Schematic layout = site.greenhouse().layout();
 		java.util.Map<Integer, dev.ilyapple.ghc.core.flow.Census.Plant> plantAt = new java.util.HashMap<>();
 		for (dev.ilyapple.ghc.core.flow.Census.Plant plant : census.plants()) for (int c : plant.cells()) plantAt.put(c, plant);
+		var waterFactors = site.greenhouse().water().factors(census.plants());
 		json.addProperty("readyToHarvest", dev.ilyapple.ghc.mod.render.Highlight.plants());
 		if (layout != null) json.addProperty("rotation", site.greenhouse().rotation());
 		JsonArray cells = new JsonArray();
@@ -266,6 +267,11 @@ public final class DebugStream {
 			dev.ilyapple.ghc.core.flow.Census.Plant counted = plantAt.get(tracked.cell());
 			if (counted != null) {
 				cell.addProperty("counted", counted.origin().name());
+				double factor = waterFactors.getOrDefault(counted, 1.0);
+				cell.addProperty("water", WaterHelper.water(site, counted, factor));
+				cell.addProperty("waterFactor", factor);
+				cell.addProperty("waterConsumes", dev.ilyapple.ghc.core.Water.consumes(counted.kind(), counted.origin()));
+				cell.addProperty("waterNeed", WaterHelper.need(site, counted, waterFactors).name());
 				cell.addProperty("ready", dev.ilyapple.ghc.core.overlay.Harvest.ready(counted, layout, GreenhouseCompanion.settings().harvestBaseCrops));
 			} else if (census.clickBlock(tracked.cell())) {
 				cell.addProperty("counted", "CLICK_BLOCK");

@@ -498,6 +498,8 @@ public final class ModState {
 		skyblockProfile.put(server, id);
 		for (Profile profile : profiles) {
 			if (profile.scopes.contains(scope)) {
+				// The Carpenter can be seen before this join's Profile ID arrives.
+				adopt(server, scope, profile);
 				view(profile);
 				return scope;
 			}
@@ -509,11 +511,12 @@ public final class ModState {
 			Profile owner = null;
 			for (Site site : sites.values()) if (site.scope().equals(server) && greenhouses.contains(site.key())) owner = profileOf(site);
 			target = owner != null ? owner : viewedProfile();
-			adopt(server, scope, target);
 		} else {
 			target = createProfile(profileName == null || profileName.isBlank() ? "" : profileName);
 			GreenhouseCompanion.LOGGER.info("[GHC] New SkyBlock profile {} on {}: made profile \"{}\"", id, server, target.name);
 		}
+		// A greenhouse may be scanned before the ID arrives, including on a previously unseen profile.
+		adopt(server, scope, target);
 		target.scopes.add(scope);
 		view(target);
 		dirty = true;
@@ -528,14 +531,23 @@ public final class ModState {
 
 	/** Gives every greenhouse saved under the plain server the SkyBlock profile's scope instead (same data, new key). */
 	private void adopt(String server, String scope, Profile profile) {
+		boolean adopted = false;
 		for (String key : List.copyOf(greenhouses)) {
 			int bar = key.lastIndexOf('|');
 			if (bar < 0 || !key.substring(0, bar).equals(server)) continue;
 			String newKey = scope + key.substring(bar);
-			if (greenhouses.contains(newKey)) continue;
+			if (greenhouses.contains(newKey)) {
+				// Keep the saved profile's tracker/water/flow; the unscoped arrival is a duplicate.
+				forget(key);
+				continue;
+			}
 			rekey(key, newKey);
 			siteProfiles.put(newKey, profile.id);
+			adopted = true;
+			dirty = true;
 		}
+		// A provisional assignment may have come from the profile shown before this ID arrived.
+		if (adopted) refreshKeeping(profile);
 	}
 
 	private void rekey(String key, String newKey) {
@@ -620,7 +632,10 @@ public final class ModState {
 	 * its Carpenter is seen.
 	 */
 	public void forget(Site site) {
-		String key = site.key();
+		forget(site.key());
+	}
+
+	private void forget(String key) {
 		sites.remove(key);
 		greenhouses.remove(key);
 		assignments.remove(key);
@@ -700,6 +715,48 @@ public final class ModState {
 		Flows.parse(text);
 		int index = put(text, name);
 		for (Profile other : usersOf(index)) refreshKeeping(other);
+		save();
+	}
+
+	/** Creates a one-step plot from an unassigned greenhouse without replacing existing plots. */
+	public void copyLiveLayout(Site site) {
+		if (site.greenhouse().runner() != null) throw new IllegalStateException("This greenhouse already follows a layout");
+		var layout = dev.ilyapple.ghc.core.flow.LiveLayout.copy(site.greenhouse().context().census());
+		Profile profile = profileOf(site);
+		int index = indexOf(profile.flowName);
+		Flows existing = profile.flows;
+		JsonObject root;
+		if (existing != null && existing.raw() != null) root = existing.raw().deepCopy();
+		else if (existing != null) {
+			Map<Integer, String> links = new LinkedHashMap<>();
+			for (Flows.Plot plot : existing.plots()) links.put(plot.id(), plot.steps().getFirst().layoutCode());
+			root = JsonParser.parseString(Flows.fromPlotLinks(links)).getAsJsonObject();
+		} else {
+			root = new JsonObject();
+			root.addProperty("kind", Flows.KIND);
+			root.addProperty("version", 1);
+			root.add("plots", new JsonArray());
+		}
+		int plotId = 1;
+		if (existing != null) for (Flows.Plot plot : existing.plots()) plotId = Math.max(plotId, plot.id() + 1);
+		JsonObject added = JsonParser.parseString(Flows.fromPlotLinks(Map.of(plotId, layout.code()))).getAsJsonObject();
+		root.getAsJsonArray("plots").add(added.getAsJsonArray("plots").get(0));
+		String text = GSON.toJson(root);
+		Flows.parse(text);
+		if (index < 0) {
+			index = put(text, uniqueName("Live greenhouse layouts"));
+			profile.flowName = library.get(index).name();
+		} else {
+			FlowFile old = library.get(index);
+			FlowFile edited = new FlowFile(old.name(), text, old.importedMs(), old.file());
+			library.set(index, edited);
+			writeFile(edited);
+		}
+		for (Profile user : usersOf(index)) refreshKeeping(user);
+		// The snapshot is already in world coordinates, so it needs no rotation.
+		assign(site, plotId, false, 0);
+		site.greenhouse().swapDone();
+		setNote(site, "Copied live plants into a new layout");
 		save();
 	}
 

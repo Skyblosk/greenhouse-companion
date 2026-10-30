@@ -11,8 +11,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
@@ -33,9 +31,9 @@ import dev.ilyapple.ghc.mod.ui.Theme;
  * which are grown as they spawn, and base crops; not placed items or spawns kept as layout inputs) in green, and of
  * every growing crop that needs water ({@link WaterHelper#need}) in yellow, or red once it is at −100; each colour is a
  * setting. Optionally through blocks (Athen's depthless boxes), because some mutations' hitboxes are odd: an armor
- * stand to one side, a click block hidden under a cactus. Boxes are the plant's armor stands (a crop made only of
- * blocks gets its bottom block), cut off at the soil so nothing is drawn underground; hidden Short Jellybean parts are
- * left out.
+ * stand to one side, a click block hidden under a cactus. Each plant can use blocks or armor stands (Stages page),
+ * falling back when that geometry is absent. Boxes are cut off at the soil so nothing is drawn underground;
+ * hidden Short Jellybean parts are left out.
  */
 public final class Highlight {
 	private static final float LINE_WIDTH = 2.5f;
@@ -115,21 +113,12 @@ public final class Highlight {
 		return bean != null && bean.shape().fullyGrown();
 	}
 
-	/**
-	 * The plant's outline: its armor stands only, as for the commons, so a tall crop's blocks (Wild Rose) and the hidden
-	 * click blocks around it stay unboxed. Sugar cane, and cactus unless its hitbox is chosen, get their whole stalk as one
-	 * unbroken box instead; a crop made only of blocks its bottom block. A grown Jellybean shows only its grown parts.
-	 */
-	private static List<AABB> outline(ClientLevel level, BlockPos corner, Census.Plant plant, List<Entity>[] entitiesByCell, boolean grown, Settings settings) {
-		Block stalkBlock = plant.id().equals("sugar_cane") ? Blocks.SUGAR_CANE
-				: plant.id().equals("cactus") && settings.cactusOutline == Settings.CactusOutline.BLOCK ? Blocks.CACTUS : null;
-		if (stalkBlock != null) {
-			AABB stalk = stalk(level, corner, plant.cells(), stalkBlock);
-			if (stalk != null) {
-				List<AABB> one = new ArrayList<>();
-				add(one, stalk);
-				return one;
-			}
+	/** The selected geometry, falling back to the other kind when the plant has none of its own. */
+	static List<AABB> outline(ClientLevel level, BlockPos corner, Census.Plant plant, List<Entity>[] entitiesByCell, boolean grown, Settings settings) {
+		boolean block = settings.highlightOutline(plant.id()) == Settings.HighlightOutline.BLOCK;
+		if (block) {
+			List<AABB> blocks = blockOutline(level, corner, plant.cells());
+			if (!blocks.isEmpty()) return single(plant.id(), blocks);
 		}
 		List<AABB> stands = new ArrayList<>();
 		for (int cell : plant.cells()) {
@@ -199,24 +188,24 @@ public final class Highlight {
 		return (box.maxX - box.minX) * (box.maxY - box.minY) * (box.maxZ - box.minZ);
 	}
 
-	/** The plant's stalk of {@code block}s, from the soil up, as one box (so the outline has no breaks between blocks). */
-	private static @Nullable AABB stalk(ClientLevel level, BlockPos corner, List<Integer> cells, Block block) {
-		AABB union = null;
+	/** Each cell's connected blocks above the soil, with a stalk drawn as one unbroken box. */
+	private static List<AABB> blockOutline(ClientLevel level, BlockPos corner, List<Integer> cells) {
+		List<AABB> found = new ArrayList<>();
 		for (int cell : cells) {
 			BlockPos base = corner.offset(GardenGrid.cellX(cell), 1, GardenGrid.cellZ(cell));
-			for (int dy = 0; dy < 12; dy++) {
+			AABB column = null;
+			for (int dy = 0; dy < 16; dy++) {
 				BlockPos pos = base.above(dy);
 				BlockState state = level.getBlockState(pos);
-				if (!state.is(block)) {
-					if (state.isAir() || dy > 0) break;
-					continue;
-				}
+				if (state.isAir()) break;
+				if (JellybeanView.hides(pos)) continue;
 				VoxelShape shape = state.getShape(level, pos);
 				AABB box = shape.isEmpty() ? new AABB(pos) : shape.bounds().move(pos);
-				union = union == null ? box : union.minmax(box);
+				column = column == null ? box : column.minmax(box);
 			}
+			if (column != null) add(found, column);
 		}
-		return union;
+		return found;
 	}
 
 	/** The part of a hitbox above the soil: a box reaching into the ground starts at the ground instead. */

@@ -29,11 +29,40 @@ class SettingsTest {
 		assertEquals(4, settings.overlayLabelRange);
 		assertFalse(settings.highlightThroughBlocks);
 		assertFalse(settings.tickChime, "a setting that didn't change keeps the player's choice");
-		assertEquals(Settings.CactusOutline.BLOCK, settings.cactusOutline);
+		assertEquals(Settings.HighlightOutline.BLOCK, settings.highlightOutline("cactus"));
 		settings.save();
 		String saved = Files.readString(file);
 		assertFalse(saved.contains("protectOtherCrops"), saved);
-		assertTrue(saved.contains("\"settingsVersion\": 5"), saved);
+		assertEquals(Settings.VERSION, settings.settingsVersion);
+	}
+
+	@Test
+	void cactusChoiceMigratesAndEachPlantsOutlinePersistsIndependently(@TempDir Path config) throws Exception {
+		Path file = config.resolve("greenhouse-companion/settings.json");
+		Files.createDirectories(file.getParent());
+		Files.writeString(file, "{\"settingsVersion\":5,\"cactusOutline\":\"HITBOX\"}");
+		Settings settings = Settings.load(config);
+		assertEquals(Settings.HighlightOutline.ARMOR_STAND, settings.highlightOutline("cactus"));
+		assertEquals(Settings.HighlightOutline.BLOCK, settings.highlightOutline("sugar_cane"));
+		assertEquals(Settings.HighlightOutline.ARMOR_STAND, settings.highlightOutline("shadevine"));
+		settings.toggleHighlightOutline("shadevine");
+		settings.toggleHighlightOutline("magic_jellybean");
+		Settings restored = Settings.load(config);
+		assertEquals(Settings.HighlightOutline.BLOCK, restored.highlightOutline("shadevine"));
+		assertEquals(Settings.HighlightOutline.BLOCK, restored.highlightOutline("magic_jellybean"));
+		assertEquals(Settings.HighlightOutline.ARMOR_STAND, restored.highlightOutline("cactus"));
+		assertEquals(Settings.HighlightOutline.ARMOR_STAND, restored.highlightOutline("duskbloom"));
+		assertFalse(Files.readString(file).contains("cactusOutline"));
+	}
+
+	@Test
+	void invalidOutlineEntriesUseTheOriginalDefaults(@TempDir Path config) throws Exception {
+		Path file = config.resolve("greenhouse-companion/settings.json");
+		Files.createDirectories(file.getParent());
+		Files.writeString(file, "{\"settingsVersion\":6,\"highlightOutlines\":{\"cactus\":null,\"shadevine\":\"FUTURE_VALUE\"}}");
+		Settings settings = Settings.load(config);
+		assertEquals(Settings.HighlightOutline.BLOCK, settings.highlightOutline("cactus"));
+		assertEquals(Settings.HighlightOutline.ARMOR_STAND, settings.highlightOutline("shadevine"));
 	}
 
 	@Test

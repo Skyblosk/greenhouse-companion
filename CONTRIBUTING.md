@@ -26,6 +26,8 @@ version.
 | `buildTools/PROJECT_VERSION` | The mod's version |
 | `docs/CHANGELOG.md` | What changed in each release |
 
+For feature entry points, see [the code map](docs/ARCHITECTURE.md). Keep page-specific UI work in its page class.
+
 ## Version-specific code
 
 Almost all the code is shared. Where Minecraft versions differ, Stonecutter comments choose the code. The code for
@@ -58,13 +60,15 @@ stays written for 26.1.
 ./gradlew build
 ```
 
-This builds and unit-tests every version. The jars are in `build/libs/`. For one version, run
+This builds and unit-tests every version. On a resource-constrained laptop, use `./gradlew build --no-parallel`:
+the recording replay already uses parallel workers, so running three versions of it at once can compete for resources. The jars are in `build/libs/`. For one version, run
 `./gradlew :26.3:build`.
 
 - **Unit tests:** `./gradlew :26.1:test`. The core is plain Java, and a test keeps Minecraft out of it. Some tests
   replay your own recordings and drop logs, and read them from your Minecraft folder. Put
   `minecraftDir=/path/to/instance/minecraft` in `local.properties` (never committed), or set `GHC_MINECRAFT_DIR`.
-  Without it, those tests are skipped.
+  Without it, those tests are skipped. Successful test stdout stays in the Gradle reports instead of flooding the terminal.
+  Replay reports go to `versions/<version>/build/reports/replay.md` (`GHF_REPORT` overrides this).
 - **Game tests:** `./gradlew :26.3:runClientGameTest` opens a client and makes a world.
     - The render test draws a depth-checked box, a see-through box, a name tag and the overlay's ghosts.
     - The GUI test clicks every element of the window and types into every text field. It writes what each one

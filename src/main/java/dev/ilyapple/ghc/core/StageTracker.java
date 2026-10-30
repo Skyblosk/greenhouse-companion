@@ -123,6 +123,12 @@ public final class StageTracker {
 		emptyFor.replaceAll((cell, ticks) -> ticks + max);
 	}
 
+	/** A stable live look must be reconciled again after the shared clock advances. */
+	public boolean hasPendingTicks(int cell) {
+		State state = cells.get(cell);
+		return state != null && state.pendingMax > 0;
+	}
+
 	public long ticksMin() {
 		return ticksMin;
 	}
@@ -154,7 +160,7 @@ public final class StageTracker {
 		else if (reading.fullyGrown()) stages = Growth.fullyGrownStages(plant);
 		else stages = plant == state.plant ? predict(state, state.mayStall) : plant.allStages();
 		boolean grown = reading.fullyGrown() || reading.stage() != null && reading.stage() >= plant.readyStage();
-		Origin origin = reading.origin(plant.mutation(), grown);
+		Origin origin = reading.origin(plant.mutation(), grown, plant.id().equals(Growth.JELLYBEAN));
 		if (origin == null) origin = state.origin;
 		State fresh = plant == state.plant && origin == state.origin ? state
 				: new State(plant, origin, state.firstSeenMs, state.blockOnly, stages, state.lookKey, state.lookFingerprint, state.lookKnown);
@@ -213,7 +219,7 @@ public final class StageTracker {
 		}
 
 		StageSet predicted = predict(state, state.mayStall);
-		if (match.known() && hologram == null && !match.stages().isEmpty() && match.stages().lo() <= 1 && match.stages().hi() < predicted.lo()
+		if (!keys.key().equals(state.lookKey) && match.known() && hologram == null && !match.stages().isEmpty() && match.stages().lo() <= 1 && match.stages().hi() < predicted.lo()
 				&& !Growth.canReset(plant)) {
 			// The same kind back at its first stage, younger than it can be: harvested (or broken) and replanted between
 			// two scans. Only a first-stage look counts, so a stage that was simply misjudged isn't taken for a harvest.

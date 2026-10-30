@@ -15,9 +15,8 @@ import com.google.gson.JsonObject;
  */
 public final class LootTable {
 	/**
-	 * The armor rare crops and the crops each is the rare drop of. A harvest can only give one when it drops one of its
-	 * crops: a Shadevine (Cactus and Sugar Cane) a Fermento, a Dustgrain (Wheat) a Cropie. The user's 27 Oct log: every
-	 * Fermento came while only Shadevines and Jellybeans (Sugar Cane) broke, never with a Dustgrain alone.
+	 * Armor rare crops and their eligible base crops. Mutations roll armor rare crops independently of their ordinary
+	 * crop drops and rarity: the user's 29 Oct logs include Dustgrain Helianthus and Lonelily Fermento.
 	 */
 	public static final Map<String, Set<String>> RARE_CROP_OF = Map.of(
 			"CROPIE", Set.of("WHEAT", "CARROT_ITEM", "POTATO_ITEM"),
@@ -40,14 +39,14 @@ public final class LootTable {
 	}
 
 	/**
-	 * Whether a harvest of {@code plant} can drop {@code item} at all: an armor rare crop only with one of its crops,
-	 * an Ethereal Vine only from a mutation. A plant missing from the table can drop anything.
+	 * Mutations can roll every armor rare crop, including common mutations. Base crops retain their crop-specific
+	 * armor drops. Ethereal Vine only comes from mutations. A plant missing from the table can drop anything.
 	 */
 	public boolean canDrop(String plant, String item) {
 		Map<String, Double> items = drops.get(plant);
 		if (items == null) return true;
 		Set<String> crops = RARE_CROP_OF.get(item);
-		if (crops != null) return items.keySet().stream().anyMatch(crops::contains);
+		if (crops != null) return mutations.contains(plant) || items.keySet().stream().anyMatch(crops::contains);
 		if (item.equals(ETHEREAL_VINE)) return mutations.contains(plant);
 		return true;
 	}

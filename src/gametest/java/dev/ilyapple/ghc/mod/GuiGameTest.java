@@ -73,6 +73,8 @@ public class GuiGameTest implements FabricClientGameTest {
 				if (!only.isBlank() && !only.contains(page.name())) continue;
 				context.runOnClient(client -> restoreSettings());
 				sweep(context, page);
+				if (page == CompanionScreen.Page.FLOW) copyLiveLayout(context);
+				if (page == CompanionScreen.Page.STAGES) stageHighlightToggle(context);
 			}
 			context.runOnClient(client -> restoreSettings());
 			if (only.isBlank() || only.contains("INVENTORY")) {
@@ -100,6 +102,67 @@ public class GuiGameTest implements FabricClientGameTest {
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
+		List<String> failures = lines.stream().filter(line -> line.contains("!!")).toList();
+		if (!failures.isEmpty()) throw new AssertionError("GUI regressions:\n" + String.join("\n", failures));
+	}
+
+	/** Exercise the empty Flow page and its copy button with real mouse input. */
+	private void copyLiveLayout(ClientGameTestContext context) {
+		ModState.Profile previous = context.computeOnClient(client -> GreenhouseCompanion.state().viewedProfile());
+		ModState.Site site = context.computeOnClient(client -> {
+			ModState state = GreenhouseCompanion.state();
+			state.view(state.createProfile("Copy live GUI test"));
+			ModState.Site result = state.site("copy-test", new net.minecraft.core.BlockPos(-5, 73, 91));
+			state.markGreenhouse(result.key());
+			result.greenhouse().observe(27, com.google.gson.JsonParser.parseString(
+					"{\"blocks\":[\"minecraft:wheat[age=1]\"],\"entities\":[]}").getAsJsonObject(), System.currentTimeMillis());
+			return result;
+		});
+		open(context, CompanionScreen.Page.FLOW, 0);
+		context.runOnClient(client -> set(Mc.screen(), "siteKey", site.key()));
+		context.waitTicks(2);
+		context.takeScreenshot("gui-flow-copy-live");
+		int[] button = context.computeOnClient(client -> {
+			int width = client.font.width("Copy live to layout") + 12;
+			return visible(hotspots("hotspots")).stream().filter(h -> h[2] == width && h[3] == 18).findFirst().orElseThrow();
+		});
+		clickCanvas(context, button);
+		context.runOnClient(client -> {
+			if (site.greenhouse().runner() == null
+					|| !site.greenhouse().runner().step().schematic().inputCounts().equals(Map.of("wheat", 1)))
+				throw new AssertionError("Copy live must create a layout containing growing wheat");
+		});
+		context.takeScreenshot("gui-flow-copied-layout");
+		lines.add("FLOW copy live → saved a layout with growing wheat as a placement");
+		// Copying selects Layout. Keep the same window, then switch to an unassigned greenhouse.
+		context.runOnClient(client -> {
+			ModState state = GreenhouseCompanion.state();
+			ModState.Site unassigned = state.site("copy-test", new net.minecraft.core.BlockPos(-5, 73, -197));
+			state.markGreenhouse(unassigned.key());
+			unassigned.greenhouse().observe(27, com.google.gson.JsonParser.parseString(
+					"{\"blocks\":[\"minecraft:carrots[age=7]\"],\"entities\":[]}").getAsJsonObject(), System.currentTimeMillis());
+			set(Mc.screen(), "siteKey", unassigned.key());
+		});
+		context.waitTicks(3);
+		context.takeScreenshot("gui-flow-unassigned-after-layout");
+		lines.add("FLOW preview → switched from a copied layout to an unassigned greenhouse with a live carrot");
+		context.runOnClient(client -> GreenhouseCompanion.state().view(previous));
+	}
+
+	/** A Stages row must expose the setting and change it with a real click. */
+	private void stageHighlightToggle(ClientGameTestContext context) {
+		context.runOnClient(client -> restoreSettings());
+		open(context, CompanionScreen.Page.STAGES, 0);
+		String before = context.computeOnClient(client -> GSON.toJson(GreenhouseCompanion.settings().highlightOutlines));
+		int[] toggle = context.computeOnClient(client -> {
+			return visible(hotspots("hotspots")).stream().filter(h -> h[0] > canvasWidth() - 120 && h[3] == 14)
+					.findFirst().orElseThrow(() -> new AssertionError("Stages needs a highlight toggle on each visible row"));
+		});
+		clickCanvas(context, toggle);
+		String after = context.computeOnClient(client -> GSON.toJson(GreenhouseCompanion.settings().highlightOutlines));
+		if (before.equals(after)) throw new AssertionError("Stages highlight button must change the plant's setting");
+		context.takeScreenshot("gui-stages-highlight");
+		lines.add("STAGES highlight → changed an individual plant's outline");
 	}
 
 	// The pages
@@ -337,7 +400,7 @@ public class GuiGameTest implements FabricClientGameTest {
 		context.setScreen(() -> new CompanionScreen(null, page));
 		context.waitTicks(2);
 		if (settingsScroll > 0) {
-			context.runOnClient(client -> set(Mc.screen(), "settingsScroll", settingsScroll));
+			context.runOnClient(client -> set(get(Mc.screen(), "settingsPage"), "settingsScroll", settingsScroll));
 			context.waitTicks(2);
 		}
 	}
@@ -468,7 +531,13 @@ public class GuiGameTest implements FabricClientGameTest {
 		Minecraft client = Minecraft.getInstance();
 		Screen screen = Mc.screen();
 		state.put("screen", screen == null ? "null" : screen.getClass().getSimpleName());
-		if (screen instanceof CompanionScreen) fields(state, "window.", screen, CompanionScreen.class);
+		if (screen instanceof CompanionScreen) {
+			fields(state, "window.", screen, CompanionScreen.class);
+			for (String page : List.of("flow", "leaderboard", "settingsPage")) {
+				Object view = get(screen, page);
+				if (view != null) fields(state, "window." + page + ".", view, view.getClass());
+			}
+		}
 		JsonObject settings = GSON.toJsonTree(GreenhouseCompanion.settings()).getAsJsonObject();
 		for (Map.Entry<String, JsonElement> entry : settings.entrySet()) state.put("settings." + entry.getKey(), entry.getValue().toString());
 		ModState mod = GreenhouseCompanion.state();

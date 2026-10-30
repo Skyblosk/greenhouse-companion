@@ -31,8 +31,9 @@ public final class Settings {
 		}
 	}
 
-	/** How the highlight outlines a cactus: its blocks (the stalk), or its armor stands' hitboxes. */
-	public enum CactusOutline { BLOCK, HITBOX }
+	/** Geometry used for a plant's harvest and water highlights. */
+	public enum HighlightOutline { BLOCK, ARMOR_STAND }
+	@Deprecated private enum CactusOutline { BLOCK, HITBOX }
 
 	/** The colours a highlight can be drawn in (swatches on the Settings page). */
 	public static final int[] HIGHLIGHT_COLORS = {0xFF34D399, 0xFFFACC15, 0xFFEF4444, 0xFFFB923C, 0xFF22D3EE, 0xFF60A5FA, 0xFFA78BFA, 0xFFF472B6, 0xFFF8FAFC};
@@ -40,7 +41,7 @@ public final class Settings {
 	/** Bumped when a default changes in a way saved settings should follow once. */
 	public int settingsVersion = 0;
 	/** The current {@link #settingsVersion}: a new install starts here, with nothing to carry over. */
-	static final int VERSION = 5;
+	static final int VERSION = 6;
 
 	// Main settings (the user's list, 27 Oct 2026); a sub-setting only matters while its main one is on
 
@@ -68,6 +69,9 @@ public final class Settings {
 	public boolean highlightHarvestable = true;
 	/** Highlight Fully Grown Crops › through blocks (Athen's depthless boxes); the water highlight too. */
 	public boolean highlightThroughBlocks = false;
+	/** Box rendering for the layout overlay and harvest/water highlights. Both on preserves the original appearance. */
+	public boolean boxFill = true;
+	public boolean boxOutline = true;
 	/** Highlight Fully Grown Crops › colour (green). */
 	public int grownColor = 0xFF34D399;
 	/**
@@ -126,8 +130,8 @@ public final class Settings {
 	public boolean protectPlacedLook = false;
 	/** Say above the hotbar why a click was blocked. */
 	public boolean protectionMessage = true;
-	/** How the highlight outlines a cactus. */
-	public CactusOutline cactusOutline = CactusOutline.BLOCK;
+	/** Per-plant highlight geometry, edited on the Stages page. Missing entries keep the original defaults. */
+	public java.util.Map<String, HighlightOutline> highlightOutlines = new java.util.HashMap<>();
 	/** The local, read-only debug stream on 127.0.0.1. Off by default: it is for following a session from outside the game. */
 	public boolean debugStream = false;
 	public int debugPort = 47913;
@@ -142,6 +146,7 @@ public final class Settings {
 	@Deprecated private @Nullable Boolean hideSkyblockerChat;
 	// Replaced on 28 Oct 2026: Water Above Crops drew the boxes, and this wrote the values
 	@Deprecated private @Nullable Boolean waterValues;
+	@Deprecated private @Nullable CactusOutline cactusOutline;
 
 	private transient Path file;
 
@@ -165,9 +170,11 @@ public final class Settings {
 		settings.menuOpacity = Math.max(40, Math.min(100, settings.menuOpacity));
 		if (settings.debugPort < 1024 || settings.debugPort > 65535) settings.debugPort = 47913;
 		if (settings.settingsVersion < 4) settings.migrateTo4();
-		if (settings.cactusOutline == null) settings.cactusOutline = CactusOutline.BLOCK;
 		if (settings.dropsIconCorner == null) settings.dropsIconCorner = Corner.TOP_LEFT;
 		if (settings.settingsVersion < 5) settings.migrateTo5();
+		if (settings.highlightOutlines == null) settings.highlightOutlines = new java.util.HashMap<>();
+		settings.highlightOutlines.values().removeIf(java.util.Objects::isNull);
+		if (settings.settingsVersion < 6) settings.migrateTo6();
 		settings.waterVisitsPerDay = Math.max(1, Math.min(4, settings.waterVisitsPerDay));
 		settings.waterLabelRange = Math.max(2, Math.min(64, settings.waterLabelRange));
 		settings.grownColor = opaque(settings.grownColor);
@@ -218,6 +225,24 @@ public final class Settings {
 		}
 		waterValues = null;
 		settingsVersion = 5;
+	}
+
+	@SuppressWarnings("deprecation")
+	private void migrateTo6() {
+		if (cactusOutline != null) highlightOutlines.putIfAbsent("cactus",
+				cactusOutline == CactusOutline.BLOCK ? HighlightOutline.BLOCK : HighlightOutline.ARMOR_STAND);
+		cactusOutline = null;
+		settingsVersion = 6;
+	}
+
+	public HighlightOutline highlightOutline(String plant) {
+		return highlightOutlines.getOrDefault(plant,
+				plant.equals("cactus") || plant.equals("sugar_cane") ? HighlightOutline.BLOCK : HighlightOutline.ARMOR_STAND);
+	}
+
+	public void toggleHighlightOutline(String plant) {
+		highlightOutlines.put(plant, highlightOutline(plant) == HighlightOutline.BLOCK ? HighlightOutline.ARMOR_STAND : HighlightOutline.BLOCK);
+		save();
 	}
 
 	/** A saved colour with no alpha drawn as opaque. */

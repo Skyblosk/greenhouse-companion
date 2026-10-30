@@ -125,9 +125,9 @@ class WaterTest {
 		// The menu as read on the alpha, 27 Oct 2026
 		Diagnosis reading = Diagnosis.parse("Magic Jellybean", List.of("Stage: 52/120", "Next Stage: 1h 11m 53s", "Water: -30/100",
 				"Lasts for: 11h 44m 59s", "Status: Harvestable"));
-		assertEquals(-30, reading.water());
+		assertEquals(-30.0, reading.water());
 		assertEquals(52, reading.stage());
-		assertEquals(90, Diagnosis.parse("Magic Jellybean", List.of("Stage: 60/120", "Water: 90/100")).water());
+		assertEquals(90.0, Diagnosis.parse("Magic Jellybean", List.of("Stage: 60/120", "Water: 90/100")).water());
 		assertNull(Diagnosis.parse("Glasscorn", List.of("Stage: 6/8")).water());
 	}
 

@@ -15,7 +15,7 @@ import java.util.Map;
  * <li>The server breaks a plant, sends its "RARE CROP!" line and updates the inventory together; the break shows a few
  *     ticks after the line. So a chat or inventory drop belongs to the harvest seen from {@link #BEFORE_TICKS} ticks
  *     before it to {@link #AFTER_TICKS} after, the one nearest {@link #LAG_TICKS} after, among the plants that can drop
- *     it ({@link LootTable#canDrop}: a Fermento goes to the Shadevine beside a Dustgrain, not the Dustgrain).</li>
+ *     it ({@link LootTable#canDrop}); common mutations are eligible for armor rare crops too.</li>
  * <li>A [Sacks] report lists what reached the sacks in about the last 30 seconds: it belongs to the harvests of the
  *     {@link #SACK_WINDOW_MS} before it.</li>
  * <li>When harvests of several plants could have made a drop, it is split between the plants that drop that item, by
@@ -153,11 +153,16 @@ public final class DropMatcher {
 		for (Pending pending : candidates) byPlant.computeIfAbsent(pending.harvest.plant(), id -> new ArrayList<>()).add(pending);
 		List<String> plants = List.copyOf(byPlant.keySet());
 		if (byPlant.isEmpty()) return new Outcome(drop, Map.of(), "ignored", List.of());
-		// Plants that can't drop it at all (a Dustgrain's Fermento, a Cactus's Ethereal Vine) are no candidates
+		// Base crops keep their armor restrictions; a Cactus cannot drop Ethereal Vine.
 		byPlant.keySet().removeIf(plant -> !loot.canDrop(plant, drop.item()));
 		if (byPlant.isEmpty()) {
 			for (DropBook book : books) book.unmatched(drop.item(), drop.count());
 			return new Outcome(drop, Map.of(), "unmatched", plants);
+		}
+
+		if (drop.source() == Source.CHAT && Items.RARE.contains(drop.item()) && byPlant.size() > 1) {
+			for (DropBook book : books) book.mixed(drop.item(), drop.count());
+			return new Outcome(drop, Map.of(), "mixed", plants);
 		}
 
 		Map<String, Double> weights = new LinkedHashMap<>();
