@@ -241,6 +241,25 @@ class ModStateTest {
 	}
 
 	@Test
+	void renamedDefaultKeepsEditsAndFollowingProgress(@TempDir Path dir) {
+		ModState state = load(dir);
+		String edited = state.library().getFirst().text().replace("Jellybean + Duskbloom", "My Duskbloom phase");
+		state.rename(0, "Hybrid Shadevine (27 Oct)");
+		state.importFlows(edited, "Hybrid Shadevine (27 Oct)");
+		ModState.Site site = state.site("hypixel.net", PLOT_4);
+		state.markGreenhouse(site.key());
+		state.assign(site, 1, false, 2);
+		site.greenhouse().tick(3, 3);
+		state.save();
+		ModState again = load(dir);
+		assertEquals("Jellybean + Shadevine", again.library().getFirst().name());
+		assertEquals(edited, again.library().getFirst().text());
+		assertEquals("Jellybean + Shadevine", again.viewedProfile().flowName());
+		assertEquals(3, again.siteByKey(site.key()).greenhouse().runner().cyclesInStep());
+		assertEquals(2, again.assignment(again.siteByKey(site.key())).rotation());
+	}
+
+	@Test
 	void copiedPlotsPersistWithoutResettingExistingFlowProgress(@TempDir Path dir) {
 		ModState state = load(dir);
 		ModState.Site a = state.site("hypixel.net", PLOT_4);

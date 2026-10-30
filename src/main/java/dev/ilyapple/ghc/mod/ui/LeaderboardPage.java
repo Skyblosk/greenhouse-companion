@@ -1,6 +1,7 @@
 package dev.ilyapple.ghc.mod.ui;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -19,6 +20,7 @@ final class LeaderboardPage {
 	private Leaderboard.Mode boardMode = Leaderboard.Mode.FLOW;
 	private Leaderboard.Sort boardSort = Leaderboard.Sort.COINS;
 	private int boardInterval = 1;
+	private Leaderboard.NpcPrices boardNpcPrices = Leaderboard.NpcPrices.MAIN;
 	/** The board's numbers for this many plots (the simulations ran on one; 3 by default, like the user's greenhouse). */
 	private int boardPlots = 3;
 	private @Nullable String boardSelected;
@@ -40,20 +42,26 @@ final class LeaderboardPage {
 	}
 
 
-	private static @Nullable Leaderboard board;
+	private static final Map<Leaderboard.NpcPrices, Leaderboard> boards = new EnumMap<>(Leaderboard.NpcPrices.class);
 	private static boolean boardLoaded;
 
 	/** The bundled leaderboard, read once. */
 	static @Nullable Leaderboard board() {
+		return board(Leaderboard.NpcPrices.MAIN);
+	}
+
+	private static @Nullable Leaderboard board(Leaderboard.NpcPrices prices) {
 		if (!boardLoaded) {
 			boardLoaded = true;
-			try (var in = CompanionScreen.class.getResourceAsStream("/assets/greenhouse-companion/leaderboard/leaderboard.json")) {
-				if (in != null) board = Leaderboard.read(in);
-			} catch (Exception e) {
-				GreenhouseCompanion.LOGGER.error("[GHC] Could not read the leaderboard", e);
+			for (Leaderboard.NpcPrices variant : Leaderboard.NpcPrices.values()) {
+				try (var in = CompanionScreen.class.getResourceAsStream("/assets/greenhouse-companion/leaderboard/leaderboard.json")) {
+					if (in != null) boards.put(variant, Leaderboard.read(in, variant));
+				} catch (Exception e) {
+					GreenhouseCompanion.LOGGER.error("[GHC] Could not read the {} leaderboard", variant, e);
+				}
 			}
 		}
-		return board;
+		return boards.get(prices);
 	}
 
 	private static String coins(double value) {
@@ -80,7 +88,7 @@ final class LeaderboardPage {
 		int x = screen.contentX();
 		int w = screen.contentW();
 		int top = screen.contentTop();
-		Leaderboard lb = board();
+		Leaderboard lb = board(boardNpcPrices);
 		if (lb == null) {
 			screen.wrap(g, "No leaderboard data in this build: its leaderboard.json is missing or unreadable.", x, top, w, Theme.MUTED);
 			return;
@@ -116,7 +124,23 @@ final class LeaderboardPage {
 			screen.tooltip(g, List.of(Component.literal("Harvest interval: you're online every " + boardInterval + " growth stage" + (boardInterval == 1 ? "" : "s"))), mouseX, mouseY);
 		}
 
-		int listTop = top + 22;
+		int priceY = top + 20;
+		Theme.small(g, screen.font(), "NPC PRICES", x, priceY + 5, Theme.FAINT);
+		int priceX = x + 42;
+		priceX += screen.pill(g, mouseX, mouseY, "Main", priceX, priceY, boardNpcPrices == Leaderboard.NpcPrices.MAIN, Theme.INFO, () -> {
+			boardNpcPrices = Leaderboard.NpcPrices.MAIN;
+			boardScroll = 0;
+			boardStatus = "";
+		});
+		priceX += screen.pill(g, mouseX, mouseY, "Alpha", priceX, priceY, boardNpcPrices == Leaderboard.NpcPrices.ALPHA, Theme.INFO, () -> {
+			boardNpcPrices = Leaderboard.NpcPrices.ALPHA;
+			boardScroll = 0;
+			boardStatus = "";
+		});
+		Theme.small(g, screen.font(), Theme.fit(screen.font(), boardNpcPrices == Leaderboard.NpcPrices.MAIN
+				? "Main crop sell prices" : "Alpha crop sell prices · pending on Main", (x + w - priceX - 8) * 2), priceX + 8, priceY + 5, Theme.MUTED);
+
+		int listTop = top + 42;
 		int listW = (int) (w * 0.56);
 		String plots = boardPlots == 3 ? "3 plots" : "1 plot";
 		String head = ironman ? "Ironman: each mutation's Ironman flow run from an empty inventory, " + plots + ", once it's running; uptime = main items a day"
@@ -145,9 +169,12 @@ final class LeaderboardPage {
 					selected ? Theme.alpha(Theme.accent(), 0x99) : Theme.BORDER);
 			int rankColor = row.rank() == 1 ? 0xFFFBBF24 : row.rank() == 2 ? 0xFFCBD5E1 : row.rank() == 3 ? 0xFFD97706 : Theme.MUTED;
 			g.text(screen.font(), "#" + row.rank(), x + 4, ry + 5, rankColor, false);
-			Theme.cropIcon(g, row.entry().mutation(), x + 26, ry + 2, 14, 255);
+			Theme.cropIcon(g, row.entry().icon(), x + 26, ry + 2, 14, 255);
 			int valueW = ironman ? 190 : 92;
-			g.text(screen.font(), Theme.fit(screen.font(), row.entry().name(), listW - 44 - valueW), x + 44, ry + 5, rarityColor(row.entry().rarity()), false);
+			if (row.entry().defaultFlow()) {
+				g.text(screen.font(), Theme.fit(screen.font(), "Jellybean + Shadevine", listW - 44 - valueW), x + 44, ry, rarityColor(row.entry().rarity()), false);
+				g.text(screen.font(), "(Default)", x + 44, ry + 9, Theme.INFO, false);
+			} else g.text(screen.font(), Theme.fit(screen.font(), row.entry().name(), listW - 44 - valueW), x + 44, ry + 5, rarityColor(row.entry().rarity()), false);
 			Leaderboard.Numbers numbers = row.numbers();
 			if (!numbers.possible()) {
 				Theme.small(g, screen.font(), ironman ? "never reaches its main step" : "an input nobody makes", x + listW - 80, ry + 7, Theme.DANGER);
@@ -187,7 +214,7 @@ final class LeaderboardPage {
 			}));
 		}
 		g.disableScissor();
-		if (chosen != null) boardDetail(g, mouseX, mouseY, chosen, x + listW + Theme.GAP, top + 22, w - listW - Theme.GAP);
+		if (chosen != null) boardDetail(g, mouseX, mouseY, chosen, x + listW + Theme.GAP, top + 42, w - listW - Theme.GAP);
 	}
 
 	/** "−3% lost", or "+1% over" when the simulation beat the formula (within its noise). */
@@ -221,15 +248,18 @@ final class LeaderboardPage {
 		int bottom = screen.height - Theme.PAD;
 		Theme.card(g, x, y, w, bottom - y, Theme.glass(Theme.SURFACE), Theme.BORDER);
 		int buttonsY = bottom - Theme.BUTTON_H - 6;
-		g.enableScissor(x + 1, y + 1, x + w - 1, buttonsY - 4);
+		int linksY = buttonsY - Theme.BUTTON_H - 4;
+		g.enableScissor(x + 1, y + 1, x + w - 1, linksY - 4);
 		int cy = y + 8 - boardDetailScroll;
 		int tx = x + 8;
 		int tw = w - 16;
-		Theme.cropIcon(g, e.mutation(), tx, cy, 16, 255);
+		Theme.cropIcon(g, e.icon(), tx, cy, 16, 255);
 		g.text(screen.font(), Theme.fit(screen.font(), "#" + row.rank() + "  " + e.name(), tw - 20), tx + 20, cy + 4, rarityColor(e.rarity()), false);
 		cy += 22;
 		String plots = boardPlots == 3 ? "3 plots" : "1 plot";
-		if (ironman) {
+		if (e.defaultFlow()) {
+			cy = defaultDetail(g, e, tx, cy, tw, plots);
+		} else if (ironman) {
 			cy = ironmanDetail(g, e, tx, cy, tw, plots);
 		} else {
 			Leaderboard.Numbers normal = e.at(Leaderboard.Mode.NORMAL, boardInterval);
@@ -254,11 +284,20 @@ final class LeaderboardPage {
 
 		// Each board adds its own flow: the Ironman board the Ironman flow, the Normal board the normal one
 		int bx = x + 8;
-		if (e.layout() != null) bx += screen.button(g, mouseX, mouseY, "Copy link", bx, buttonsY, Theme.INFO, () -> {
+		if (e.layout() != null) bx += screen.button(g, mouseX, mouseY, "Copy link", bx, linksY, Theme.INFO, () -> {
 			Minecraft.getInstance().keyboardHandler.setClipboard("https://greenhouse.skyshards.com/designer?layout=" + e.layout());
 			boardStatus = "Designer link copied";
 		}) + 4;
-		if (ironman && e.ironmanFlow() != null) bx += screen.button(g, mouseX, mouseY, "Add Ironman flow", bx, buttonsY, Theme.SUCCESS, () -> {
+		bx = x + 8;
+		if (e.defaultFlow()) bx += screen.button(g, mouseX, mouseY, "Add default flow", bx, buttonsY, Theme.SUCCESS, () -> {
+			try {
+				screen.state().addToLibrary(e.normalFlow(), "Jellybean + Shadevine");
+				boardStatus = "Added Jellybean + Shadevine to Flows";
+			} catch (RuntimeException ex) {
+				boardStatus = "Couldn't add it: " + ex.getMessage();
+			}
+		}) + 4;
+		if (!e.defaultFlow() && ironman && e.ironmanFlow() != null) bx += screen.button(g, mouseX, mouseY, "Add Ironman flow", bx, buttonsY, Theme.SUCCESS, () -> {
 			try {
 				screen.state().addToLibrary(e.ironmanFlow(), "Ironman: " + e.name());
 				boardStatus = "Added to Flows as \"Ironman: " + e.name() + "\"";
@@ -266,7 +305,7 @@ final class LeaderboardPage {
 				boardStatus = "Couldn't add it: " + ex.getMessage();
 			}
 		}) + 4;
-		if (!ironman && e.normalFlow() != null) bx += screen.button(g, mouseX, mouseY, "Add normal flow", bx, buttonsY, Theme.SUCCESS, () -> {
+		if (!e.defaultFlow() && !ironman && e.normalFlow() != null) bx += screen.button(g, mouseX, mouseY, "Add normal flow", bx, buttonsY, Theme.SUCCESS, () -> {
 			try {
 				screen.state().addToLibrary(e.normalFlow(), "Normal: " + e.name());
 				boardStatus = "Added to Flows as \"Normal: " + e.name() + "\"";
@@ -275,6 +314,22 @@ final class LeaderboardPage {
 			}
 		}) + 4;
 		if (!boardStatus.isEmpty()) Theme.small(g, screen.font(), Theme.fit(screen.font(), boardStatus, (x + w - bx - 6) * 2), bx + 2, buttonsY + 6, Theme.SUCCESS);
+	}
+
+	private int defaultDetail(GuiGraphicsExtractor g, Leaderboard.Entry e, int tx, int cy, int tw, String plots) {
+		cy = screen.wrap(g, "Jellybean + Shadevine (Default): the bundled starter flow, with two Jellybean/Shadevine plots and a third plot that also grows Duskbloom.", tx, cy, tw, Theme.TEXT);
+		Leaderboard.Numbers n = e.at(boardMode, boardInterval);
+		if (n != null) {
+			cy = screen.wrap(g, items(n.made() * boardPlots) + " net Magic Jellybeans and " + coins(n.coins() * boardPlots)
+					+ " NPC coins a day, " + plots + ".", tx, cy + 3, tw, Theme.TEXT);
+			if (boardMode == Leaderboard.Mode.NORMAL) {
+				cy = screen.wrap(g, "With mutation sales and inputs at Bazaar: " + coins(n.profit(e.outputItem(), LeaderboardPage::inputPrice) * boardPlots) + " a day.", tx, cy + 2, tw, Theme.WARNING);
+			}
+			if (!n.makes().isEmpty()) cy = screen.wrap(g, "Other net mutation output a day: " + itemList(n.makes(), new ArrayList<>()), tx, cy + 2, tw, Theme.MUTED);
+		}
+		cy = screen.wrap(g, "Runs as the exact three-plot flow, including its 16 / 16 / 8 Jellybean phase switches. The 1-plot view is one third of this bundle's output, not a standalone layout.", tx, cy + 3, tw, Theme.MUTED);
+		cy = screen.wrap(g, boardMode == Leaderboard.Mode.NORMAL ? "Normal starts with stocked inputs." : "Ironman starts with no mutation stock; the third plot supplies Duskbloom. Uptime compares Jellybean output with the stocked version of this same flow. There is no separate dedicated-plot profit-share formula for this mixed flow.", tx, cy + 3, tw, Theme.MUTED);
+		return screen.wrap(g, "Fully grown base crops are harvested and included in the NPC revenue. Copy link opens plot 1's first layout; Add default flow includes all three plots and both phases.", tx, cy + 3, tw, Theme.FAINT);
 	}
 
 	/** The Ironman board's detail: the simulated flow at this interval, what it loses, then the profit share it's measured against. */

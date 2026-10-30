@@ -320,9 +320,9 @@ public final class ModState {
 		}
 	}
 
-	/** The sample flow an empty library starts with: a hybrid Shadevine flow (27 Oct 2026). */
+	/** The default flow an empty library starts with. */
 	public static final String TEST_FLOW = "/assets/greenhouse-companion/flows/hybrid-shadevine.json";
-	public static final String TEST_FLOW_NAME = "Hybrid Shadevine (27 Oct)";
+	public static final String TEST_FLOW_NAME = "Jellybean + Shadevine";
 	/** The flow preloaded before 27 Oct. */
 	private static final String OLD_TEST_FLOW_NAME = "Jellybean + Shadevine (24 Oct)";
 	/**
@@ -341,20 +341,24 @@ public final class ModState {
 	private void upgradeBundledFlow() {
 		for (int i = 0; i < library.size(); i++) {
 			FlowFile flowFile = library.get(i);
-			if (!flowFile.name().equals(OLD_TEST_FLOW_NAME) && !flowFile.name().equals(TEST_FLOW_NAME)) continue;
-			if (SUPERSEDED_CODES.stream().noneMatch(flowFile.text()::contains)) continue;
+			boolean legacyName = flowFile.name().equals(OLD_TEST_FLOW_NAME) || flowFile.name().equals("Hybrid Shadevine (27 Oct)")
+					|| flowFile.name().equals("Hybrid Shadevine (Oct 27)");
+			if (!legacyName && !flowFile.name().equals(TEST_FLOW_NAME)) continue;
+			boolean superseded = SUPERSEDED_CODES.stream().anyMatch(flowFile.text()::contains);
+			if (!legacyName && !superseded) continue;
 			try (InputStream in = ModState.class.getResourceAsStream(TEST_FLOW)) {
 				if (in == null) return;
-				String text = new String(in.readAllBytes(), StandardCharsets.UTF_8).strip();
+				String text = superseded ? new String(in.readAllBytes(), StandardCharsets.UTF_8).strip() : flowFile.text();
+				String newName = legacyName ? uniqueName(TEST_FLOW_NAME) : TEST_FLOW_NAME;
 				// Under its current name (and file name) from now on
-				String fileName = flowFile.name().equals(TEST_FLOW_NAME) ? flowFile.file() : fileNameFor(TEST_FLOW_NAME, text);
-				FlowFile updated = new FlowFile(TEST_FLOW_NAME, text, System.currentTimeMillis(), fileName);
+				String fileName = flowFile.name().equals(newName) ? flowFile.file() : fileNameFor(newName, text);
+				FlowFile updated = new FlowFile(newName, text, flowFile.importedMs(), fileName);
 				library.set(i, updated);
 				writeFile(updated);
 				if (!fileName.equals(flowFile.file())) Files.deleteIfExists(flowDir.resolve(flowFile.file()));
-				for (Profile profile : profiles) if (flowFile.name().equals(profile.flowName)) profile.flowName = TEST_FLOW_NAME;
+				for (Profile profile : profiles) if (flowFile.name().equals(profile.flowName)) profile.flowName = newName;
 				dirty = true;
-				GreenhouseCompanion.LOGGER.info("[GHC] Updated {} to the current hybrid Shadevine flow (27 Oct)", flowFile.name());
+				GreenhouseCompanion.LOGGER.info("[GHC] Updated {} to {}", flowFile.name(), newName);
 			} catch (IOException e) {
 				GreenhouseCompanion.LOGGER.error("[GHC] Could not read the bundled flow", e);
 			}

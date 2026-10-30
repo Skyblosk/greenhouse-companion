@@ -24,9 +24,9 @@ version.
 | `sharedVariables/` | `ProjectTarget` (Fabric Loader and Fabric API per version) and `MinecraftVersion` |
 | `gradle/libs.versions.toml` | Loom and the other plugin and library versions |
 | `buildTools/PROJECT_VERSION` | The mod's version |
-| `docs/CHANGELOG.md` | What changed in each release |
+| `README.md` | Features, mechanics and recent changes |
 
-For feature entry points, see [the code map](docs/ARCHITECTURE.md). Keep page-specific UI work in its page class.
+See the [README](README.md) for features, behavior and mechanics. Keep page-specific UI work in its page class.
 
 ## Version-specific code
 
@@ -79,6 +79,6 @@ the recording replay already uses parallel workers, so running three versions of
 
 ## Releases
 
-1. Set the version in `buildTools/PROJECT_VERSION` and add a section to `docs/CHANGELOG.md`.
+1. Set the version in `buildTools/PROJECT_VERSION` and update the recent changes in `README.md`.
 2. Run `./gradlew build`.
 3. Tag the commit `v<version>`, and attach the three jars from `build/libs/` to the GitHub release.

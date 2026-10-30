@@ -42,6 +42,9 @@ engines/
 *.patched.js
 
 # Local AI instructions and reference documentation
-/CLAUDE.md
-/AGENTS.md
+CLAUDE.md
+AGENTS.md
+.claude/
+.agents/
+.codex/
 /docs/

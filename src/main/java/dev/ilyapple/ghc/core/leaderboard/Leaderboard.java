@@ -40,6 +40,9 @@ public final class Leaderboard {
 
 	public enum Sort { COINS, ITEMS, UPTIME }
 
+	/** Only base-crop NPC prices differ; harvests, inputs, rare drops and Bazaar prices are shared. */
+	public enum NpcPrices { MAIN, ALPHA }
+
 	/**
 	 * One interval's numbers. In profit-share mode {@code made} and {@code coins} are per chain plot-day. {@code coins}
 	 * are NPC coins (mutation items count 0); {@code uses} the mutations used a day, {@code makes} the other mutations
@@ -101,7 +104,11 @@ public final class Leaderboard {
 	 */
 	public record Entry(String mutation, String name, String rarity, String producer, @Nullable String layout, boolean flowProducer,
 			List<Numbers> normal, List<Numbers> profitShare, List<Target> targets, List<Sim> sims, @Nullable String ironmanFlow,
-			@Nullable String normalFlow, double roundDays, int fillCells, int dedicated, List<Numbers> flow) {
+			@Nullable String normalFlow, double roundDays, int fillCells, int dedicated, List<Numbers> flow, boolean defaultFlow) {
+		/** The default is a mixed three-plot flow; Jellybeans are its primary counted output. */
+		public String outputItem() { return defaultFlow ? "magic_jellybean" : mutation; }
+
+		public String icon() { return outputItem(); }
 		public @Nullable Numbers at(Mode mode, int n) {
 			for (Numbers numbers : switch (mode) {
 				case NORMAL -> normal;
@@ -150,6 +157,11 @@ public final class Leaderboard {
 	}
 
 	public static Leaderboard read(InputStream in) throws IOException {
+		return read(in, NpcPrices.MAIN);
+	}
+
+	/** Reads the same simulations valued with either Main or Alpha base-crop NPC prices. */
+	public static Leaderboard read(InputStream in, NpcPrices prices) throws IOException {
 		JsonObject root = JsonParser.parseReader(new InputStreamReader(in, StandardCharsets.UTF_8)).getAsJsonObject();
 		List<Entry> entries = new ArrayList<>();
 		for (JsonElement element : root.getAsJsonArray("entries")) {
@@ -173,11 +185,11 @@ public final class Leaderboard {
 				if (ironman.has("simByN")) ironman.getAsJsonArray("simByN").forEach(run -> runs.add(run.getAsJsonObject()));
 				else if (ironman.has("sim")) runs.add(ironman.getAsJsonObject("sim"));
 				for (JsonObject s : runs) {
-					sims.add(new Sim(s.has("n") ? s.get("n").getAsInt() : 1, number(s, "daysToMain"), orZero(s, "mainShare"), orZero(s, "coinsPerDay"),
-							orZero(s, "madePerDay"), number(s, "steadyCoinsPerDay"), number(s, "steadyMadePerDay"), orZero(s, "days"), number(s, "lateMainShare"),
+					sims.add(new Sim(s.has("n") ? s.get("n").getAsInt() : 1, number(s, "daysToMain"), orZero(s, "mainShare"), npcCoins(s, "coinsPerDay", prices),
+							orZero(s, "madePerDay"), npcNumber(s, "steadyCoinsPerDay", prices), number(s, "steadyMadePerDay"), orZero(s, "days"), number(s, "lateMainShare"),
 							// Once running, like lateMainShare
 							number(s, "lateSwapsPerPlotDay") != null ? number(s, "lateSwapsPerPlotDay") : number(s, "swapsPerPlotDay"),
-							number(s, "outputUptime"), number(s, "lateMadePerDay"), number(s, "lateCoinsPerDay"), number(s, "lostVsProfitShare")));
+							number(s, "outputUptime"), number(s, "lateMadePerDay"), npcNumber(s, "lateCoinsPerDay", prices), number(s, "lostVsProfitShare")));
 				}
 				if (ironman.has("flow")) flow = ironman.get("flow").toString();
 				roundDays = orZero(ironman, "roundDays");
@@ -193,26 +205,37 @@ public final class Leaderboard {
 				double uptime = sim.outputUptime() != null ? sim.outputUptime() : sim.lateMainShare() != null ? sim.lateMainShare() : sim.mainShare();
 				flowNumbers.add(new Numbers(sim.n(), sim.daysToMain() != null, made / 3, coins / 3, uptime, Map.of(), Map.of(), Map.of()));
 			}
+			if (e.has("flow")) flowNumbers = numbers(e, "flow", prices);
 			entries.add(new Entry(e.get("mutation").getAsString(), e.get("name").getAsString(), string(e, "rarity"), e.get("producer").getAsString(),
-					string(e, "layout"), e.has("flowProducer") && e.get("flowProducer").getAsBoolean(), numbers(e, "normal"), numbers(e, "profitShare"),
+					string(e, "layout"), e.has("flowProducer") && e.get("flowProducer").getAsBoolean(), numbers(e, "normal", prices), numbers(e, "profitShare", prices),
 					targets, List.copyOf(sims), flow, e.has("normalFlow") ? e.get("normalFlow").toString() : null, roundDays, fillCells, dedicated,
-					List.copyOf(flowNumbers)));
+					List.copyOf(flowNumbers), e.has("defaultFlow") && e.get("defaultFlow").getAsBoolean()));
 		}
 		Map<String, String> stats = new LinkedHashMap<>();
 		if (root.has("stats")) for (Map.Entry<String, JsonElement> stat : root.getAsJsonObject("stats").entrySet()) stats.put(stat.getKey(), stat.getValue().getAsString());
 		return new Leaderboard(entries, root.has("about") ? root.get("about").getAsString() : "", stats);
 	}
 
-	private static List<Numbers> numbers(JsonObject entry, String key) {
+	private static List<Numbers> numbers(JsonObject entry, String key, NpcPrices prices) {
 		List<Numbers> list = new ArrayList<>();
 		if (!entry.has(key)) return list;
 		for (JsonElement element : entry.getAsJsonArray(key)) {
 			JsonObject o = element.getAsJsonObject();
 			boolean possible = !o.has("possible") || o.get("possible").getAsBoolean();
-			list.add(new Numbers(o.get("n").getAsInt(), possible, orZero(o, "made"), orZero(o, "coins"), o.has("uptime") ? o.get("uptime").getAsDouble() : 1.0,
+			list.add(new Numbers(o.get("n").getAsInt(), possible, orZero(o, "made"), npcCoins(o, "coins", prices), o.has("uptime") ? o.get("uptime").getAsDouble() : 1.0,
 					map(o, "shares"), map(o, "uses"), map(o, "makes")));
 		}
 		return list;
+	}
+
+	private static @Nullable Double npcNumber(JsonObject o, String key, NpcPrices prices) {
+		String alpha = "alpha" + Character.toUpperCase(key.charAt(0)) + key.substring(1);
+		return number(o, prices == NpcPrices.ALPHA && o.has(alpha) ? alpha : key);
+	}
+
+	private static double npcCoins(JsonObject o, String key, NpcPrices prices) {
+		Double value = npcNumber(o, key, prices);
+		return value == null ? 0 : value;
 	}
 
 	private static Map<String, Double> map(JsonObject o, String key) {
@@ -253,7 +276,7 @@ public final class Leaderboard {
 		for (Entry entry : entries) {
 			if (!needle.isEmpty() && !entry.name().toLowerCase(java.util.Locale.ROOT).contains(needle)) continue;
 			Numbers numbers = entry.at(mode, n);
-			if (numbers != null && mode == Mode.NORMAL) numbers = numbers.atPrices(entry.mutation(), price);
+			if (numbers != null && mode == Mode.NORMAL) numbers = numbers.atPrices(entry.outputItem(), price);
 			if (numbers != null) rows.add(new Ranked(0, entry, numbers));
 		}
 		Comparator<Ranked> by = switch (sort) {

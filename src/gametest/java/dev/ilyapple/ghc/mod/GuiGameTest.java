@@ -34,6 +34,8 @@ import dev.ilyapple.ghc.mod.compat.Mc;
 import dev.ilyapple.ghc.mod.ui.Canvas;
 import dev.ilyapple.ghc.mod.ui.CompanionScreen;
 import dev.ilyapple.ghc.mod.ui.DropsPanel;
+import dev.ilyapple.ghc.mod.ui.Theme;
+import dev.ilyapple.ghc.core.leaderboard.Leaderboard;
 
 /**
  * Every element of the window, in a real client: each page is opened fresh and every clickable area is clicked once
@@ -75,6 +77,10 @@ public class GuiGameTest implements FabricClientGameTest {
 				sweep(context, page);
 				if (page == CompanionScreen.Page.FLOW) copyLiveLayout(context);
 				if (page == CompanionScreen.Page.STAGES) stageHighlightToggle(context);
+				if (page == CompanionScreen.Page.LEADERBOARD) {
+					leaderboardPriceToggle(context);
+					leaderboardDefaultFlow(context);
+				}
 			}
 			context.runOnClient(client -> restoreSettings());
 			if (only.isBlank() || only.contains("INVENTORY")) {
@@ -166,6 +172,55 @@ public class GuiGameTest implements FabricClientGameTest {
 	}
 
 	// The pages
+
+	/** Both price choices must be clickable on the board and retain the selected flow and interval. */
+	private void leaderboardPriceToggle(ClientGameTestContext context) {
+		open(context, CompanionScreen.Page.LEADERBOARD, 0);
+		context.runOnClient(client -> {
+			Object page = get(Mc.screen(), "leaderboard");
+			set(page, "boardSelected", "devourer");
+			set(page, "boardInterval", 4);
+		});
+		context.waitTicks(2);
+		List<int[]> choices = context.computeOnClient(client -> visible(hotspots("hotspots")).stream()
+				.filter(h -> h[1] == Theme.PAD + 30 + 20 && h[3] == 14).toList());
+		if (choices.size() != 2) throw new AssertionError("Leaderboard needs Main and Alpha price buttons");
+		for (int choice : new int[] {1, 0}) {
+			clickCanvas(context, choices.get(choice));
+			context.runOnClient(client -> {
+				Object page = get(Mc.screen(), "leaderboard");
+				Leaderboard.NpcPrices expected = choice == 0 ? Leaderboard.NpcPrices.MAIN : Leaderboard.NpcPrices.ALPHA;
+				if (get(page, "boardNpcPrices") != expected) throw new AssertionError("Price button must select " + expected);
+				if (!Objects.equals(get(page, "boardSelected"), "devourer") || !Objects.equals(get(page, "boardInterval"), 4)) {
+					throw new AssertionError("Price selection must retain the selected flow and harvest interval");
+				}
+			});
+			context.takeScreenshot(choice == 0 ? "gui-leaderboard-main" : "gui-leaderboard-alpha");
+		}
+		lines.add("LEADERBOARD prices → Alpha and Main selected by real clicks, flow and interval retained");
+	}
+
+	private void leaderboardDefaultFlow(ClientGameTestContext context) {
+		open(context, CompanionScreen.Page.LEADERBOARD, 0);
+		context.runOnClient(client -> set(get(Mc.screen(), "leaderboard"), "boardSelected", "jellybean_shadevine"));
+		context.waitTicks(2);
+		context.takeScreenshot("gui-leaderboard-default");
+		int[] add = context.computeOnClient(client -> visible(hotspots("hotspots")).stream()
+				.filter(h -> h[0] > canvasWidth() * 0.6 && h[1] > canvasHeight() - 40 && h[3] == Theme.BUTTON_H)
+				.findFirst().orElseThrow(() -> new AssertionError("Default flow needs an import button")));
+		clickCanvas(context, add);
+		context.runOnClient(client -> {
+			ModState.FlowFile imported = GreenhouseCompanion.state().library().stream()
+					.filter(f -> f.name().equals("Jellybean + Shadevine")).findFirst().orElseThrow();
+			try (var in = GuiGameTest.class.getResourceAsStream(ModState.TEST_FLOW)) {
+				JsonElement expected = com.google.gson.JsonParser.parseString(new String(in.readAllBytes(), StandardCharsets.UTF_8));
+				if (!expected.equals(com.google.gson.JsonParser.parseString(imported.text()))) throw new AssertionError("Default import must preserve all three plots and both phases");
+			} catch (IOException e) {
+				throw new AssertionError(e);
+			}
+		});
+		lines.add("LEADERBOARD default → imported Jellybean + Shadevine with all three plots and phases intact");
+	}
 
 	private void sweep(ClientGameTestContext context, CompanionScreen.Page page) {
 		open(context, page, 0);
