@@ -33,10 +33,12 @@ class WaterTest {
 	void effectsScaleTheLoss() {
 		Census.Plant wheat = plant("wheat", 5, 5, 1);
 		assertEquals(1.0, factorOf(wheat), 1e-9);
-		assertEquals(1 / 1.5, factorOf(wheat, plant("melon", 4, 5, 11)), 1e-9);
-		// Improved retain hides the plain one
-		assertEquals(0.5, factorOf(wheat, plant("melon", 4, 5, 11), plant("cactus", 6, 5, 8)), 1e-9);
+		assertEquals(1.0, factorOf(wheat, plant("melon", 4, 5, 11)), 1e-9);
+		// Both retain effects are ignored
+		assertEquals(1.0, factorOf(wheat, plant("melon", 4, 5, 11), plant("cactus", 6, 5, 8)), 1e-9);
 		assertEquals(1.3, factorOf(wheat, plant("red_mushroom", 5, 4, 6)), 1e-9);
+		// Retain never reduces drain either
+		assertEquals(1.3, factorOf(wheat, plant("red_mushroom", 5, 4, 6), plant("melon", 4, 5, 11), plant("cactus", 6, 5, 8)), 1e-9);
 		// Immunity (Potato) strips the drain
 		assertEquals(1.0, factorOf(wheat, plant("red_mushroom", 5, 4, 6), plant("potato", 5, 6, 8)), 1e-9);
 		// Diagonal neighbours give nothing
@@ -45,12 +47,12 @@ class WaterTest {
 
 	@Test
 	void effectSpreadPassesWhatItHoldsOneStepFurther() {
-		Census.Plant cactus = plant("cactus", 0, 0, 8);
+		Census.Plant drain = plant("red_mushroom", 0, 0, 6);
 		Census.Plant middle = plant("wheat", 1, 0, 8);
 		Census.Plant far = plant("carrot", 2, 0, 1);
-		assertEquals(1.0, factorOf(far, cactus, middle), 1e-9);
-		// A Wild Rose beside the middle crop gives it Effect Spread: it passes the cactus's retain on
-		assertEquals(0.5, factorOf(far, cactus, middle, plant("wild_rose", 1, 1, 15)), 1e-9);
+		assertEquals(1.0, factorOf(far, drain, middle), 1e-9);
+		// A Wild Rose beside the middle crop gives it Effect Spread: it passes the mushroom's drain on
+		assertEquals(1.3, factorOf(far, drain, middle, plant("wild_rose", 1, 1, 15)), 1e-9);
 	}
 
 	@Test
@@ -62,8 +64,8 @@ class WaterTest {
 		assertEquals(0.0, water.water(young, 1, 1.0));
 		assertEquals(-60.0, water.water(young, 4, 1.0));
 		assertEquals(-100.0, water.water(young, 8, 1.0));
-		// Improved Water Retain halves it
-		assertEquals(-30.0, water.water(young, 4, 0.5));
+		// Drain increases the loss to 26 per stage
+		assertEquals(-78.0, water.water(young, 4, 1.3));
 		// A Hydro Can bar or Crop Diagnostics resets it at the stage it was read
 		water.read(young, 100, 4);
 		assertEquals(60.0, water.water(young, 6, 1.0));
@@ -80,8 +82,9 @@ class WaterTest {
 		// Full, it lasts 9 stages: once a day (14) it runs out; three times a day (5) it's fine
 		assertTrue(Water.needsWater(100.0, 40, 120, 1.0, 14));
 		assertFalse(Water.needsWater(100.0, 40, 120, 1.0, 5));
-		// With Improved Water Retain (10 a stage) full lasts 19 stages
-		assertFalse(Water.needsWater(100.0, 40, 120, 0.5, 14));
+		// Drain runs out sooner than normal loss
+		assertFalse(Water.needsWater(100.0, 40, 120, 1.0, 8));
+		assertTrue(Water.needsWater(100.0, 40, 120, 1.3, 8));
 		// Enough to grow to full: Wheat at 5 of 8 with 0 water grows its last 3 stages before -100
 		assertFalse(Water.needsWater(0.0, 5, 8, 1.0, 14));
 		assertTrue(Water.needsWater(-60.0, 5, 8, 1.0, 14));

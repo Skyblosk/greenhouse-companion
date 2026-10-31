@@ -20,8 +20,8 @@ import dev.ilyapple.ghc.core.flow.Census;
 
 /**
  * Each crop's water, kept the way the stage is (MagicAddons' {@code Plant.waterLevel}): the water it was last known to
- * have and the stage it was at then. A crop uses 20 water for every stage it grows (times its effects: Water Retain
- * ÷1.5, Improved Water Retain ÷2, Water Drain ×1.3, Immunity cancels the drain), so its water now follows from how many
+ * have and the stage it was at then. Estimates use 20 water per stage, or 26 with Water Drain (Immunity cancels
+ * the drain). Water Retain is ignored, so its water now follows from how many
  * stages it has grown since. Measured on the alpha (27 Oct 2026): a flat 20 a stage, a skipped stage uses none, and a
  * stage that would take it to −100 stops it instead.
  *
@@ -142,8 +142,7 @@ public final class Water {
 
 	/** The water use multiplier for a crop's effective effects. */
 	public static double factor(Set<String> effects) {
-		double retain = effects.contains("improved_water_retain") ? 1 : effects.contains("water_retain") ? 0.5 : 0;
-		return (1 + (effects.contains("water_drain") ? 0.3 : 0)) / (1 + retain);
+		return effects.contains("water_drain") ? 1.3 : 1.0;
 	}
 
 	/** Immunity strips negative effects; an improved effect hides its base one. */

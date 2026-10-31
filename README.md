@@ -284,8 +284,8 @@ Greenhouse often; these may change too.
 
 Measured on the alpha (27 Oct 2026) with Crop Diagnostics, which states it exactly (`Water: -30/100`):
 
-- A crop loses a flat **20 water per stage** it grows (Water Retain ÷1.5, Improved Water Retain ÷2, Water Drain ×1.3;
-  immunity cancels Drain). A skipped stage uses no water.
+- The mod estimates **20 water per stage**, or **26 with Water Drain** (Immunity cancels Drain).
+  Water Retain and Improved Water Retain are ignored for conservative estimates. A skipped stage uses no water.
 - A stage that would take it to −100 doesn't grow: at −100 it has stopped. About 1 in 3 plants skip one stage near
   −20 to −40, never twice.
 - A Hydro Can waters a 3×3 area and shows a 16-notch bar above each crop (blue above zero, red below), which the mod
@@ -355,6 +355,9 @@ Needs JDK 25 (`JAVA_HOME=/path/to/jdk-25`). It builds and unit-tests every Minec
   `src/main/resources/assets/greenhouse-companion/`. The tools that made them aren't part of this repository.
 
 ## Recent changes
+
+- **0.4.2 emergency patch:** water estimates ignore Water Retain and Improved Water Retain; normal loss is 20 per
+  stage, or 26 with Water Drain (Immunity still cancels Drain). This avoids underestimating water use after offline growth.
 
 - **0.4.2:** refreshed producer layouts, input-chain profit shares, switch targets and Ironman simulations;
   restored common-mutation rare crops; added Main / Alpha base-crop NPC prices. Jellybean + Shadevine is the named
